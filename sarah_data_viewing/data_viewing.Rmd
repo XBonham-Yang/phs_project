@@ -1,0 +1,202 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tsibbledata)
+library(tidyverse)
+library(lubridate)
+library(tsibble)
+```
+
+```{r}
+covid_age_sex_hb <- read_csv("covid_data/hospital_admissions_hb_agesex_20220302.csv")
+covid_simd_hb <-read_csv("covid_data/hospital_admissions_hb_simd_20220302.csv")
+covid_specialty_hb <- read_csv("covid_data/hospital_admissions_hb_specialty_20220302.csv")
+```
+
+```{r}
+#covid_age_sex_hb %>% head()
+```
+
+
+
+
+```{r}
+#covid_age_sex_hb %>% 
+  #names()
+
+
+#covid_age_sex_hscp %>% 
+#  names()
+```
+```{r}
+  #is.na(covid_age_sex_hb$HBQF)
+#covid_age_sex_hscp %>% 
+  #filter(!is.na(AgeGroupQF)) %>% 
+  #group_by(AgeGroupQF) %>% 
+  #count()
+```
+```{r}
+#covid_age_sex_hb %>% 
+  #filter(!is.na(AdmissionTypeQF)) %>% 
+  #group_by(AdmissionTypeQF) %>% 
+  #count()
+```
+```{r}
+#covid_age_sex_hb %>% 
+  #filter(!is.na(AdmissionTypeQF)) %>% 
+  #group_by(AdmissionTypeQF) %>% 
+  #count()
+```
+```{r}
+# covid_age_sex_hb %>% 
+ # mutate(WeekEnding = as.Date(ymd(WeekEnding))) 
+```
+------------   cleaning 
+I will clean 3 hb related data set and join them together at the end 
+
+```{r}
+names(covid_age_sex_hb %>% janitor::clean_names() )
+```
+
+```{r}
+covid_age_sex_short <- covid_age_sex_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, age_group, sex, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+  
+```
+
+```{r}
+names(covid_simd_hb %>% janitor::clean_names() )
+```
+```{r}
+covid_simd_short <- covid_simd_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, simd_quintile, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+```
+
+```{r}
+names(covid_specialty_hb %>% janitor::clean_names() )
+```
+```{r}
+covid_specialty_short <- covid_specialty_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, specialty, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+```
+
+```{r}
+covid_hb <- covid_age_sex_short %>% full_join(covid_simd_short)%>% full_join(covid_specialty_short)
+```
+```{r}
+names(covid_hb)
+```
+```{r}
+library(ggplot2)
+```
+
+emergency vs planned overall 
+very rough at the moment
+no filter or tidying, add filter later for thigns we want. 
+
+```{r}
+covid_hb %>% 
+  filter(admission_type %in% c("Emergency","Planned")) %>% 
+  drop_na(number_admissions) %>% 
+  ggplot(aes(week_ending, number_admissions))+
+  geom_line(aes(col = admission_type), group = 1)+
+  facet_wrap( ~ admission_type, ncol = 1, scales = "free_y")+
+  labs(title = "draft- admission_type compare (numbers/counts)")
+```
+```{r}
+covid_hb %>% 
+  filter(admission_type %in% c("Emergency","Planned")) %>% 
+  drop_na(number_admissions) %>% 
+  ggplot(aes(week_ending, number_admissions))+
+  geom_col(aes(fill = admission_type), position = "fill")+
+  labs(title = "draft- admission_type compare (proportion)",
+       subtitle = "...very ewww, I don't like this graph")
+```
+
+-----emergency---
+tidyed a bit (all group by week, mean of each hb)
+```{r}
+covid_emergency <- covid_hb %>% 
+  group_by(week_ending) %>% 
+  filter(admission_type == "Emergency",
+         age_group == "All ages",
+         sex == "All",
+         specialty == "All") %>% 
+  summarise(mean_this_week = mean(number_admissions),
+            mean_1819 = mean(average20182019),
+            var = mean(percent_variation))
+```
+
+
+
+
+```{r}
+library(reshape2)
+
+
+data_mod_emergency <- melt(covid_emergency,
+                  measure.vars=c('mean_this_week', 'mean_1819'))
+  
+
+ggplot(data_mod_emergency) +
+geom_boxplot(aes(y=value, color=variable))+
+  labs(title = "emergency admission all age, all sex, all specialty, mean of all hb")
+```
+
+
+ 
+
+ 
+```{r}
+covid_emergency %>% 
+  ggplot(aes(week_ending, var)) +
+    geom_col(aes(fill = case_when(var >= 0 ~"red",
+                              TRUE ~ "seagreen")))+
+  labs(title = "draft-emergency percent variation comparing with 2018/2019 ",
+       subtitle = "strange",
+       fill = "fix it later")
+```
+
+-------planned -------
+repeated as emergency 
+```{r}
+covid_planned <- covid_hb %>% 
+  group_by(week_ending) %>% 
+  filter(admission_type == "Planned",
+         age_group == "All ages",
+         sex == "All",
+         specialty == "All") %>% 
+  summarise(mean_this_week = mean(number_admissions),
+            mean_1819 = mean(average20182019),
+            var = mean(percent_variation))
+```
+ 
+```{r}
+data_mod_planned <- melt(covid_planned,
+                  measure.vars=c('mean_this_week', 'mean_1819'))
+  
+
+ggplot(data_mod_planned) +
+geom_boxplot(aes(y=value, color=variable))+
+  labs(title = "plannedadmission all age, all sex, all specialty, mean of all hb",
+       subtitle = "why why why ")
+```
+
+```{r}
+covid_planned %>% 
+  ggplot(aes(week_ending, var)) +
+    geom_col(aes(fill = case_when(var >= 0 ~"red",
+                              TRUE ~ "seagreen")))+
+  labs(title = "draft-planned percent variation comparing with 2018/2019 ",
+       subtitle = "why! i don' understand, i must have done something wrong",
+       fill = "fix it later")
+```
+ 
+ 
+ 
