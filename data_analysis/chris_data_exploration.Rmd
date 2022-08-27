@@ -186,7 +186,13 @@ waiting_times %>%
             wait_gt_12hrs = sum(wait_gt_12hrs),
             prop_gt_12hrs = wait_gt_12hrs / total_attendance) %>% 
   ggplot(aes(x = year, y = prop_gt_12hrs)) +
-  geom_col()
+  geom_col() +
+  scale_y_continuous(expand = c(0,0),
+                     labels = scales::percent) +
+  theme_classic() +
+  theme(axis.title.x = element_blank()) +
+  labs(y = "Percentage of attendances greater than 12 hours",
+       title = "Wait times of >12hours each year")
 
 ```
 # How do wait times differ between departments? (in terms of proportions)
@@ -411,14 +417,16 @@ waiting_times_summary %>%
 waiting_times_summary %>% 
   ggplot(aes(x = month, y = prop_lt_4hrs, group = 1)) +
   geom_point() +
-  labs(title = "Seasonality of proportion of visits with a wait time < 4 hours") +
+  labs(title = "Seasonality of proportion of visits with a wait time < 4 hours",
+         subtitle = "2007 to 2019") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   geom_smooth()
 
 waiting_times_summary %>% 
   ggplot(aes(x = month, y = prop_gt_4hrs, group = 1)) +
   geom_point() +
-    labs(title = "Seasonality of proportion of visits with a wait time > 4 hours") +
+    labs(title = "Seasonality of proportion of visits with a wait time > 4 hours",
+         subtitle = "2007 to 2019") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   geom_smooth()
 
@@ -426,7 +434,8 @@ waiting_times_summary %>%
 waiting_times_summary %>%
   ggplot(aes(x = month, y = prop_gt_8hrs, group = 1)) +
   geom_point() +
-    labs(title = "Seasonality of proportion of visits with a wait time > 8 hours") +
+    labs(title = "Seasonality of proportion of visits with a wait time > 8 hours",
+         subtitle = "2007 to 2019") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   geom_smooth()
 
@@ -434,9 +443,16 @@ waiting_times_summary %>%
 waiting_times_summary %>% 
   ggplot(aes(x = month, y = prop_gt_12hrs, group = 1)) +
   geom_point() +
-    labs(title = "Seasonality of proportion of visits with a wait time > 12 hours") +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
-  geom_smooth()
+    scale_y_continuous(labels = scales::percent) +
+    labs(title = "Seasonality of proportion of visits with a wait time > 12 hours",
+         subtitle = "Pre-covid: 2007 to 2019",
+         y = "Percentage of attendances > 12 hours") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  geom_smooth(se = FALSE)
+
+
 
 
 ```
