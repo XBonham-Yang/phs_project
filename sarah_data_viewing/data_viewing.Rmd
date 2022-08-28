@@ -14,6 +14,7 @@ library(tsibble)
 covid_age_sex_hb <- read_csv("covid_data/hospital_admissions_hb_agesex_20220302.csv")
 covid_simd_hb <-read_csv("covid_data/hospital_admissions_hb_simd_20220302.csv")
 covid_specialty_hb <- read_csv("covid_data/hospital_admissions_hb_specialty_20220302.csv")
+hb <- read_csv("covid_data/hb14_hb19.csv")
 ```
 
 ```{r}
@@ -23,38 +24,11 @@ covid_specialty_hb <- read_csv("covid_data/hospital_admissions_hb_specialty_2022
 
 
 
-```{r}
-#covid_age_sex_hb %>% 
-  #names()
 
 
-#covid_age_sex_hscp %>% 
-#  names()
-```
-```{r}
-  #is.na(covid_age_sex_hb$HBQF)
-#covid_age_sex_hscp %>% 
-  #filter(!is.na(AgeGroupQF)) %>% 
-  #group_by(AgeGroupQF) %>% 
-  #count()
-```
-```{r}
-#covid_age_sex_hb %>% 
-  #filter(!is.na(AdmissionTypeQF)) %>% 
-  #group_by(AdmissionTypeQF) %>% 
-  #count()
-```
-```{r}
-#covid_age_sex_hb %>% 
-  #filter(!is.na(AdmissionTypeQF)) %>% 
-  #group_by(AdmissionTypeQF) %>% 
-  #count()
-```
-```{r}
-# covid_age_sex_hb %>% 
- # mutate(WeekEnding = as.Date(ymd(WeekEnding))) 
-```
-------------   cleaning 
+
+
+------------   cleaning ---------
 I will clean 3 hb related data set and join them together at the end 
 
 ```{r}
@@ -98,8 +72,8 @@ library(ggplot2)
 
 emergency vs planned overall 
 very rough at the moment
-no filter or tidying, add filter later for thigns we want. 
-
+no filter or tidying, add filter later for things we want. 
+(eg age/sex it's mixed at the moment for the following two)
 ```{r}
 covid_hb %>% 
   filter(admission_type %in% c("Emergency","Planned")) %>% 
@@ -120,7 +94,7 @@ covid_hb %>%
 ```
 
 -----emergency---
-tidyed a bit (all group by week, mean of each hb)
+tidyed a bit (all group by week, mean of all hb)
 ```{r}
 covid_emergency <- covid_hb %>% 
   group_by(week_ending) %>% 
@@ -156,8 +130,8 @@ geom_boxplot(aes(y=value, color=variable))+
 ```{r}
 covid_emergency %>% 
   ggplot(aes(week_ending, var)) +
-    geom_col(aes(fill = case_when(var >= 0 ~"red",
-                              TRUE ~ "seagreen")))+
+    geom_col(fill = case_when(covid_emergency$var >= 0 ~"red",
+                              TRUE ~ "seagreen"))+
   labs(title = "draft-emergency percent variation comparing with 2018/2019 ",
        subtitle = "strange",
        fill = "fix it later")
@@ -191,12 +165,27 @@ geom_boxplot(aes(y=value, color=variable))+
 ```{r}
 covid_planned %>% 
   ggplot(aes(week_ending, var)) +
-    geom_col(aes(fill = case_when(var >= 0 ~"red",
-                              TRUE ~ "seagreen")))+
+    geom_col(fill = case_when(covid_planned$var >= 0 ~"red",
+                              TRUE ~ "seagreen"))+
   labs(title = "draft-planned percent variation comparing with 2018/2019 ",
        subtitle = "why! i don' understand, i must have done something wrong",
        fill = "fix it later")
 ```
  
+ 
+ ----I will add few more cols for analysis later -----
+ 
+```{r}
+covid_full <- hb %>% janitor::clean_names() %>% 
+  select(1,2) %>% 
+right_join(covid_hb,by = "hb") 
+
+covid_full <- covid_full %>% mutate(
+  year = year(week_ending),
+  month = month(week_ending,label = TRUE),
+  .after = week_ending
+)
+
+```
  
  
