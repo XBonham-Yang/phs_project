@@ -184,8 +184,104 @@ covid_full <- covid_full %>% mutate(
   year = year(week_ending),
   month = month(week_ending,label = TRUE),
   .after = week_ending
-)
+) 
 
+
+covid_full %>% head()
+```
+ 
+ 
+ 
+-----gender------
+
+looking into time this time 
+`specialty is NA ?????? `
+```{r}
+covid_sex <- covid_full %>% 
+  filter(admission_type == "All",
+         age_group == "All ages",
+         sex != "All") %>% 
+  group_by(sex,week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+covid_sex
+```
+
+
+```{r}
+covid_sex %>% ggplot(aes(week_ending, total_admissions))+
+  geom_line(aes(col = sex))+
+  labs(title = "Female/male over time ")
+```
+```{r}
+ covid_full %>% 
+  filter(admission_type == "All",
+         age_group == "All ages",
+         sex != "All") %>% 
+  group_by(sex,month) %>% 
+  summarise(total_admissions = sum(number_admissions))%>% 
+  ggplot(aes(month, total_admissions))+
+  geom_line(aes(col = sex, group = sex))+
+  geom_point(aes(col = sex))+
+  labs(title = "Female/male over time (month)")
+```
+ 
+ 
+ 
+ 
+```{r}
+covid_simd<- covid_full %>% 
+  drop_na(simd_quintile) %>% 
+  group_by(simd_quintile,week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+covid_simd
+```
+```{r}
+covid_simd %>% ggplot(aes(week_ending, total_admissions))+
+  geom_line(aes(col = as.factor(simd_quintile)))+
+  labs(title = "simd over time")
+```
+
+```{r}
+covid_simd %>% ggplot(aes(simd_quintile, total_admissions))+
+  geom_col(aes(fill = as.factor(simd_quintile)))+
+  labs(title = "simd compare to each other")
+```
+ sex-test --------
+ female = male
+ female > male 
+ alpha = 0.05
+```{r}
+covid_sex %>% 
+  ggplot(aes(sex, total_admissions)) + 
+  geom_boxplot(aes(col = sex))+
+  labs(title= "female, male title admissions")
+```
+```{r}
+library(infer)
+null_distribution <- covid_sex %>% 
+  specify(total_admissions ~ sex) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "diff in means", order = c("Female", "Male")) 
+
+
+observed_stat <- covid_sex %>% 
+  specify(total_admissions ~ sex) %>%
+  calculate(stat = "diff in means", order = c("Female", "Male"))
+  
+observed_stat
+
+
+null_distribution %>%
+  visualise() +
+  shade_p_value(obs_stat = observed_stat, direction = "right")
+
+p_value <- null_distribution %>%
+  get_p_value(obs_stat = observed_stat, direction = "right")
+
+p_value
 ```
  
  
