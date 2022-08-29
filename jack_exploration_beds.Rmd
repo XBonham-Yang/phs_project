@@ -22,6 +22,12 @@ library(lubridate)
 ```{r}
 area_codes <- read_csv("raw_data/general/hb14_hb19.csv") %>% 
   janitor::clean_names()
+
+beds_treatment_specialty <- read_csv("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv") %>% 
+  janitor::clean_names()
+
+beds_treatment_specialty <- beds_treatment_specialty %>% 
+  mutate(percentage_occupancy = coalesce(percentage_occupancy, median(percentage_occupancy, na.rm = TRUE)))
 ```
 
 
@@ -68,7 +74,7 @@ unique(beds_available$hb_name)
 beds_available %>% 
   group_by(urban_area) %>% 
   summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
-  filter(urban_area == "high population") %>% #sub out for desired 
+  filter(urban_area == "low population") %>% #sub out for desired 
   ggplot()+
   geom_line(aes(x = quarter, y = avg_occupancy))+
   labs(title = "Avg. Beds Available by Population Status",
