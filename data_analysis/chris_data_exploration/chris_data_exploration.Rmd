@@ -477,3 +477,309 @@ waiting_times_prop %>%
 ```
 
 
+# How do attendances to different specialties change over time?
+
+```{r}
+
+specialties_raw <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv")) %>%
+  clean_names()
+
+specialties_raw
+
+```
+
+```{r}
+
+specialties <- specialties_raw %>% 
+  inner_join(hb, "hb") %>% 
+  inner_join(hospitals, "location") %>% 
+  select(-ends_with("qf"), -hb, - specialty) %>% 
+  select(quarter, hb_name, location, location_name, everything()) %>% 
+  mutate(year = as.numeric(str_sub(quarter,1, 4)), .before = quarter) %>% 
+  mutate(is_covid_year = case_when(
+    year >= 2020 ~ TRUE,
+    year < 2020 ~ FALSE
+  ))
+  # mutate(quarter = str_sub(quarter, -2, -1))
+
+specialties
+
+```
+
+# all episodes vs time
+```{r}
+
+specialties %>% 
+  distinct(admission_type)
+
+specialties %>% 
+  group_by(quarter) %>% 
+  filter(admission_type == "All Inpatients and Day cases") %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = total_episodes, group = 1)) +
+  geom_line() +
+  geom_point() +
+  theme_classic() +
+  scale_y_continuous(labels = scales::comma, expand = c(0,0), limits = c(0,NA)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Total admissions for All Inpatients and Day Cases",
+       x = "Quarter",
+       y = "Total Episodes")
+
+```
+
+# All Day Cases
+
+```{r}
+
+specialties %>% 
+  distinct(admission_type)
+
+specialties %>% 
+  group_by(quarter, admission_type) %>% 
+  filter(admission_type %in% c("All Day cases", "All Inpatients")) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = total_episodes, colour = admission_type)) +
+  geom_line(aes(group = admission_type)) +
+  geom_point() +
+  theme_classic() +
+  scale_y_continuous(labels = scales::comma, expand = c(0,0), limits = c(0,NA)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Total admissions for All Day Cases and All Inpatients",
+       x = "Quarter",
+       y = "Total Episodes",
+       col = "Admission Type")
+
+
+```
+
+```{r}
+
+all_inpatient_cats <- c("Elective Inpatients",
+                          "Emergency Inpatients",
+                          "Transfers")
+
+specialties %>% 
+  group_by(quarter, admission_type) %>% 
+  filter(admission_type %in% all_inpatient_cats) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = total_episodes, colour = admission_type)) +
+  geom_line(aes(group = admission_type)) +
+  geom_point() +
+  theme_classic() +
+  scale_y_continuous(labels = scales::comma, expand = c(0,0), limits = c(0,NA)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Total admissions for Inpatients",
+       x = "Quarter",
+       y = "Total Episodes",
+       col = "Admission Type")
+
+```
+
+```{r}
+
+specialties %>% 
+  distinct(admission_type, specialty_name)
+
+```
+
+```{r}
+
+specialties %>% 
+  group_by(quarter, admission_type, specialty_name) %>% 
+  filter(admission_type == "Emergency Inpatients") %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = total_episodes, colour = specialty_name)) +
+  geom_line(aes(group = specialty_name)) +
+  geom_point() +
+  theme_classic() +
+  scale_y_continuous(labels = scales::comma, expand = c(0,0), limits = c(0,10000)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(title = "Total admissions for Emergency Inpatients",
+       subtitle = "Split by specialty",
+       x = "Quarter",
+       y = "Total Episodes",
+       col = "Admission Type")
+
+```
+
+# Which departments changed the most between Covid and pre-covid
+```{r}
+
+total_admissions <- specialties %>% 
+  group_by(is_covid_year) %>% 
+  filter(admission_type == "All Inpatients and Day cases") %>% 
+  summarise(total_admissions = sum(episodes)) %>% 
+  pull(total_admissions)
+
+change_in_at_specialties <- specialties %>% 
+  filter(admission_type %in% c(all_inpatient_cats, "All Day cases")) %>% 
+  group_by(admission_type, specialty_name, is_covid_year) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+  rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+  mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
+         covid_year_prop = covid_year / total_admissions[2],
+         percentage_change = ((covid_year_prop / pre_covid_year_prop) - 1) * 100) %>% 
+  ungroup()
+
+
+```
+
+
+
+```{r}
+
+specialties %>% 
+  filter(admission_type == "All Day cases" & specialty_name == "Cardiothoracic Surgery") %>% 
+  group_by(is_covid_year) %>% 
+  summarise(count = sum(episodes))
+
+```
+
+```{r}
+# top 5 changes in specialty proportion
+change_in_at_specialties %>% 
+  slice_max(percentage_change, n = 5)
+
+# sort by largest proportion, top 5
+change_in_at_specialties %>% 
+  slice_max(percentage_change, n = 5) %>% 
+  arrange(desc(covid_year_prop))
+
+```
+
+```{r}
+
+change_in_at_specialties %>% 
+  filter(covid_year > 1000) %>% 
+  slice_max(percentage_change, n = 5) %>% 
+  mutate(label = str_c(specialty_name, "\n(", admission_type, ")")) %>% 
+  ggplot(aes(x = reorder(label, sort(percentage_change)),
+                         y = percentage_change)) +
+  geom_col() +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8)) +
+  labs(y = "Percentage Increase (%)",
+       title = "Top 5 increases in hospital admissions (by specialty and admission type)",
+       subtitle = "More than 1,000 admissions")
+
+```
+
+```{r}
+
+change_in_specialties <- specialties %>% 
+  group_by(specialty_name, is_covid_year) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+  rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+  mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
+         covid_year_prop = covid_year / total_admissions[2],
+         percentage_change = ((covid_year_prop / pre_covid_year_prop) - 1) * 100) %>% 
+  ungroup()
+
+change_in_specialties %>% 
+  slice_max(percentage_change, n = 5) %>% 
+  filter(percentage_change > 0) %>% 
+  arrange(desc(percentage_change)) %>% 
+  ggplot(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+             y = percentage_change)) +
+  geom_col() +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0)) +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8)) +
+  labs(y = "Percentage Increase (%)",
+       title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
+       subtitle = "More than 1,000 admissions")
+
+```
+
+```{r}
+
+
+wt_with_discharges <- waiting_times_raw %>% 
+  mutate(date_ym = ym(month), .before = month,
+         month = month(date_ym, label = TRUE, abbr = FALSE),
+         year = year(date_ym)) %>% 
+  left_join(hb, c("hbt" = "hb")) %>% 
+  left_join(hospitals, c("treatment_location" = "location")) %>% 
+  rename(total_attendance = number_of_attendances_aggregate,
+         wait_lt_4hrs = number_meeting_target_aggregate,
+         wait_gt_8hrs = attendance_greater8hrs,
+         wait_gt_12hrs = attendance_greater12hrs,
+         health_board = hb_name,
+         hospital_id = treatment_location, 
+         hospital_name = location_name) %>% 
+  select(-ends_with("qf")) %>% 
+  select(date_ym, year, month, health_board, hospital_id, hospital_name,
+         everything(), -country, - hbt)
+
+# check if there is a trend across all years
+wt_with_discharges %>% 
+  group_by(date_ym, hospital_name) %>% 
+  summarise(transfers = sum(discharge_destination_transfer, na.rm = TRUE)) %>% 
+  ggplot(aes(x = date_ym, y = transfers, col = hospital_name)) +
+  geom_line() +
+  theme(legend.position = "none")
+
+# check if there is a seasonal trend
+wt_with_discharges %>% 
+  mutate(month = factor(month, levels = c("July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June"))) %>% 
+  group_by(month, health_board) %>% 
+  summarise(transfers = sum(discharge_destination_other_specialty, na.rm = TRUE)) %>% 
+  ggplot(aes(x = month, y = transfers, group = health_board, col = health_board)) +
+  geom_line() +
+  theme(legend.position = "none") +
+  facet_wrap(~ health_board, scales = "free_y") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+```
+
+# Bed occupancy data
+
+```{r}
+
+beds_raw <- read_csv(here("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
+  clean_names() %>% 
+  select(-ends_with("qf")) 
+
+```
+
+```{r}
+# all specialty names
+beds_raw %>% 
+  group_by(specialty_name) %>% 
+  summarise(sum(all_staffed_beddays))
+
+beds_raw %>% 
+  filter(specialty_name != "All Acute" & specialty_name != "All Specialties") %>% 
+  # group_by(specialty_name) %>% 
+  summarise(sum(all_staffed_beddays))
+# 209139660
+
+
+beds <- beds_raw %>% 
+  left_join(hb, "hb") %>% 
+  left_join(hospitals, "location") %>% 
+  select(quarter, hb, hb_name, location, location_name, specialty_name:percentage_occupancy) %>% 
+  mutate()
+
+
+
+```
+
+```{r}
+
+beds %>% 
+  group_by(quarter) %>% 
+  summarise(staffed_beds = sum(all_staffed_beddays),
+            occupied_beds = sum(total_occupied_beddays), 
+            occupation_percentage = occupied_beds / staffed_beds * 100) %>% 
+  ggplot(aes(x = quarter, y = occupation_percentage, group = 1)) +
+  geom_line()
+
+```
+
