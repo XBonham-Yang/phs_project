@@ -1,0 +1,121 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(tidyverse)
+library(ggplot2)
+library(tsibble)
+library(tsibbledata)
+library(lubridate)
+```
+
+>data from end of 2016 - end of 2021
+>KPIs: staffed beds available
+       percentage occupancy
+>metrics: vs time - average of whole dataset
+                  - by location (hb) - rural vs urban areas
+                  - by specialty name - cardiology, mental health, emergency
+          
+          > forecast based on pre covid data and compare to actual with all data      
+          
+```{r}
+area_codes <- read_csv("raw_data/general/hb14_hb19.csv") %>% 
+  janitor::clean_names()
+
+beds_treatment_specialty <- read_csv("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv") %>% 
+  janitor::clean_names()
+
+beds_treatment_specialty <- beds_treatment_specialty %>% 
+  mutate(percentage_occupancy = coalesce(percentage_occupancy, median(percentage_occupancy, na.rm = TRUE)))
+```
+
+
+## time series of avg occupancy by location 
+```{r}
+beds_available <- beds_treatment_specialty %>% 
+  mutate(quarter = yq(quarter)) %>%
+  select(quarter, hb, specialty_name, average_available_staffed_beds, percentage_occupancy) %>% 
+  distinct()
+
+beds_available <- left_join(beds_available, area_codes, "hb") %>% 
+  select(-c(hb_date_enacted, hb_date_archived, country)) %>% mutate(urban_area = if_else(hb_name %in% c("NHS Greater Glasgow and Clyde", "NHS Lanarkshire", "NHS Lothian"), "high population", "low population")) #based on greater than 500,000
+
+beds_available <- tsibble(beds_available, index = "quarter", key = c(hb, specialty_name, average_available_staffed_beds, percentage_occupancy, hb_name, urban_area))
+
+beds_available %>% 
+  group_by(hb_name) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
+  filter(hb_name == "NHS Ayrshire and Arran") %>% #sub out for desired area
+  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy))+
+  labs(title = "Avg. Beds Available by Region",
+       x = "Date",
+       y = "Percentage Occupancy")
+```
+##show all locations as percentage
+```{r}
+beds_available %>% 
+  filter(!is.na(hb_name)) %>% 
+  group_by(hb_name) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
+  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy, colour = hb_name))+
+  labs(title = "Avg. Beds Available by Region",
+       x = "Date",
+       y = "Percentage Occupancy")
+
+unique(beds_available$hb_name)
+```
+
+
+## time series of avg occupancy by urban population size
+```{r}
+beds_available %>% 
+  group_by(urban_area) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
+  filter(urban_area == "low population") %>% #sub out for desired 
+  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy))+
+  labs(title = "Avg. Beds Available by Population Status",
+       x = "Date",
+       y = "Percentage Occupancy")
+```
+## show all population status' as percentage
+```{r}
+beds_available %>% 
+  group_by(urban_area) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy))%>%  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy, colour = urban_area))+
+  labs(title = "Avg. Beds Available by Population Status",
+       x = "Date",
+       y = "Percentage Occupancy")
+```
+
+
+
+
+## time series of avg occupancy overall
+```{r}
+beds_available %>% 
+  index_by(quarter) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
+  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy))+
+  labs(title = "Avg. Beds Available",
+       x = "Date",
+       y = "Percentage Occupancy")
+```
+## time series of avg occupancy by specialty - emergency grouping - cardiology - mental health grouping
+```{r}
+beds_available %>% 
+  group_by(specialty_name) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
+  filter(specialty_name == "Mental Health Grouping") %>% #sub out for desired area
+  ggplot()+
+  geom_line(aes(x = quarter, y = avg_occupancy))+
+  labs(title = "Avg. Beds Available by Specialty",
+       x = "Date",
+       y = "Percentage Occupancy")
+```
+

@@ -1,0 +1,479 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Load in libraries
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(tsibble)
+library(lubridate)
+library(sf)
+
+```
+# Load in data sets
+```{r}
+
+waiting_times_raw <- read_csv(here("raw_data/non_covid/monthly_ae_waitingtimes_202206.csv")) %>% 
+  clean_names()
+
+hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
+  clean_names() %>% 
+  select(hb, hb_name)
+
+hospitals <- read_csv(here("raw_data/general/current-hospital_flagged20211216.csv")) %>% 
+  clean_names() %>% 
+  select(location, location_name)
+
+```
+
+# clean dataset
+
+The following cleaning does the following to the waiting times data set: 
+- converts month column to year_month dates and extracts years and months  
+- joins health board and hospital names to data set  
+- renames columns to more easily understandable names  
+- removes columns relating to "episodes", "qualifier codes" and "discharges"
+- adds new value of wait greater than 4 hours to the data  
+- _replaces all NA values with 0 (this step may be optional)_
+
+Please note that 4 hours wait time is the "Target" wait time for the NHS and is
+represented by the "wait_lt_4hrs" column values.
+```{r}
+# cleaning script
+waiting_times <- waiting_times_raw %>% 
+  mutate(date_ym = ym(month), .before = month,
+         month = month(date_ym, label = TRUE, abbr = FALSE),
+         year = year(date_ym)) %>% 
+  left_join(hb, c("hbt" = "hb")) %>% 
+  left_join(hospitals, c("treatment_location" = "location")) %>% 
+  rename(total_attendance = number_of_attendances_aggregate,
+         wait_lt_4hrs = number_meeting_target_aggregate,
+         wait_gt_8hrs = attendance_greater8hrs,
+         wait_gt_12hrs = attendance_greater12hrs,
+         health_board = hb_name,
+         hospital_id = treatment_location, 
+         hospital_name = location_name) %>% 
+  select(date_ym, year, month, health_board, hospital_id, hospital_name, department_type,
+         total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
+  mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
+  mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0)))
+
+waiting_times
+```
+
+```{r}
+# create table with proportions of wait times used for the analysis
+waiting_times_prop <- waiting_times %>% 
+  pivot_longer(contains("wait"), names_to = "wait_category", values_to = "number_of_attendances") %>% 
+  mutate(wait_prop = number_of_attendances / total_attendance,
+         wait_category = str_replace(wait_category, "wait", "prop")) %>% 
+  select(-number_of_attendances) %>% 
+  pivot_wider(names_from = wait_category, values_from = wait_prop)
+
+
+waiting_times_prop
+```
+
+# Analysis
+
+## How does hospital attendances change with time?
+
+```{r}
+# plot all data - attendances per year
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(total_attendance = sum(total_attendance)) %>% 
+  ggplot(aes(x = year, y = total_attendance)) +
+  geom_col()
+
+# attendances - all data covid seasonal analysis
+waiting_times %>% 
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance)) %>% 
+  ggplot(aes(x = month, y = total_attendance, group = year, col = factor(year))) +
+  geom_line()
+
+# attendances per month - pre-covid seasonal analysis
+waiting_times %>% 
+  filter(year < 2020) %>% 
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance)) %>% 
+  ggplot(aes(x = month, y = total_attendance, group = year, col = factor(year))) +
+  geom_line()
+
+# attendances per month - covid seasonal analysis
+waiting_times %>% 
+  filter(year >= 2020) %>% 
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance)) %>% 
+  ggplot(aes(x = month, y = total_attendance, group = year, col = factor(year))) +
+  geom_line()
+
+```
+
+# How do wait times change per year? (in terms of numbers)
+
+```{r}
+# wait times less than 4 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(wait_lt_4hrs = sum(wait_lt_4hrs)) %>% 
+  ggplot(aes(x = year, y = wait_lt_4hrs)) +
+  geom_col()
+
+# wait times more than 4 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(wait_gt_4hrs = sum(wait_gt_4hrs)) %>% 
+  ggplot(aes(x = year, y = wait_gt_4hrs)) +
+  geom_col()
+
+# wait times more than 8 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(wait_gt_8hrs = sum(wait_gt_8hrs)) %>% 
+  ggplot(aes(x = year, y = wait_gt_8hrs)) +
+  geom_col()
+
+# wait times more than 12 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(wait_gt_12hrs = sum(wait_gt_12hrs)) %>% 
+  ggplot(aes(x = year, y = wait_gt_12hrs)) +
+  geom_col()
+
+```
+
+# How do wait times change per year? (in terms of proportion)
+
+```{r}
+
+# wait times less than 4 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_lt_4hrs = sum(wait_lt_4hrs),
+            prop_lt_4hrs = wait_lt_4hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_lt_4hrs)) +
+  geom_col()
+
+# wait times more than 4 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_4hrs = sum(wait_gt_4hrs),
+            prop_gt_4hrs = wait_gt_4hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_4hrs)) +
+  geom_col()
+
+# wait times more than 8 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_8hrs = sum(wait_gt_8hrs),
+            prop_gt_8hrs = wait_gt_8hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_8hrs)) +
+  geom_col()
+
+# wait times more than 12 hours
+waiting_times %>% 
+  group_by(year) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_12hrs = sum(wait_gt_12hrs),
+            prop_gt_12hrs = wait_gt_12hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_12hrs)) +
+  geom_col() +
+  scale_y_continuous(expand = c(0,0),
+                     labels = scales::percent) +
+  theme_classic() +
+  theme(axis.title.x = element_blank()) +
+  labs(y = "Percentage of attendances greater than 12 hours",
+       title = "Wait times of >12hours each year")
+
+```
+# How do wait times differ between departments? (in terms of proportions)
+
+```{r}
+
+# wait times less than 4 hours
+waiting_times %>% 
+  group_by(year, department_type) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_lt_4hrs = sum(wait_lt_4hrs),
+            prop_lt_4hrs = wait_lt_4hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_lt_4hrs, fill = department_type)) +
+  geom_col(position = "dodge")
+
+# wait times more than 4 hours
+waiting_times %>% 
+  group_by(year, department_type) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_4hrs = sum(wait_gt_4hrs),
+            prop_gt_4hrs = wait_gt_4hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_4hrs, fill = department_type)) +
+  geom_col(position = "dodge")
+
+# wait times more than 8 hours
+waiting_times %>% 
+  group_by(year, department_type) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_8hrs = sum(wait_gt_8hrs),
+            prop_gt_8hrs = wait_gt_8hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_8hrs, fill = department_type)) +
+  geom_col(position = "dodge")
+
+# wait times more than 12 hours
+waiting_times %>% 
+  group_by(year, department_type) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            wait_gt_12hrs = sum(wait_gt_12hrs),
+            prop_gt_12hrs = wait_gt_12hrs / total_attendance) %>% 
+  ggplot(aes(x = year, y = prop_gt_12hrs, fill = department_type)) +
+  geom_col(position = "dodge")
+
+```
+
+# How do wait times change per year & month? (in terms of numbers)
+
+```{r}
+# wait times less than 4 hours
+waiting_times %>% 
+  group_by(year, month) %>% 
+  summarise(wait_lt_4hrs = sum(wait_lt_4hrs)) %>% 
+  ggplot(aes(x = month, y = wait_lt_4hrs, group = year, col = factor(year))) +
+  geom_line()
+
+# wait times more than 4 hours
+waiting_times %>% 
+  group_by(year, month) %>% 
+  summarise(wait_gt_4hrs = sum(wait_gt_4hrs)) %>% 
+  ggplot(aes(x = month, y = wait_gt_4hrs, group = year, col = factor(year))) +
+  geom_line()
+
+# wait times more than 8 hours
+waiting_times %>% 
+  group_by(year, month) %>% 
+  summarise(wait_gt_8hrs = sum(wait_gt_8hrs)) %>% 
+  ggplot(aes(x = month, y = wait_gt_8hrs, group = year, col = factor(year))) +
+  geom_line()
+
+# wait times more than 12 hours
+waiting_times %>% 
+  group_by(year, month) %>% 
+  summarise(wait_gt_12hrs = sum(wait_gt_12hrs)) %>% 
+  ggplot(aes(x = month, y = wait_gt_12hrs, group = year, col = factor(year))) +
+  geom_line()
+
+```
+
+# How do wait times vary across health boards?
+
+```{r}
+# in terms of numbers
+waiting_times %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(wait_gt_8hrs = sum(wait_gt_8hrs)) %>% 
+  ggplot(aes(x = date_ym, y = wait_gt_8hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Number of waits > 8 hours for each healthboard")
+
+# in terms of proportion
+waiting_times_prop %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 8 hours for each healthboard")
+
+
+# find top 5 healthboards (in terms of attendances)
+top_5_attendances_by_hb <- waiting_times_prop %>% 
+  group_by(health_board) %>% 
+  summarise(total_att = sum(total_attendance)) %>% 
+  slice_max(total_att, n = 5)
+
+# find bottom 5 healthboards (in terms of attendances)
+bottom_5_attendances_by_hb <- waiting_times_prop %>% 
+  group_by(health_board) %>% 
+  summarise(total_att = sum(total_attendance)) %>% 
+  slice_min(total_att, n = 5)
+
+# wait times across the top 5 healthboards > 8 hours
+waiting_times_prop %>% 
+  filter(health_board %in% top_5_attendances_by_hb$health_board) %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 8 hours for the top 5 most attended healthboards")
+
+# wait times across the bottom 5 healthboards > 8 hours
+waiting_times_prop %>% 
+  filter(health_board %in% bottom_5_attendances_by_hb$health_board) %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 8 hours for the bottom 5 most attended healthboards")
+
+
+# wait times across the top 5 healthboards > 12 hours
+waiting_times_prop %>% 
+  filter(health_board %in% top_5_attendances_by_hb$health_board) %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 12 hours for the bottom 5 most attended healthboards")
+
+# wait times across the bottom 5 healthboards > 12 hours
+waiting_times_prop %>% 
+  filter(health_board %in% bottom_5_attendances_by_hb$health_board) %>% 
+  group_by(date_ym, health_board) %>% 
+  summarise(prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = health_board)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 12 hours for the bottom 5 most attended healthboards")
+
+```
+
+```{r}
+
+# wait times across each hospital in the Borders healthboard
+waiting_times_prop %>% 
+  # filter(health_board == "NHS Borders") %>% 
+  group_by(date_ym, hospital_name) %>% 
+  summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = hospital_name)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 8 hours for the bottom 5 most attended healthboards") +
+  theme(legend.position = "none")
+
+```
+
+# most affected healthboards
+```{r}
+# in terms of proportion
+top_5_hospital_props <- waiting_times_prop %>% 
+  group_by(hospital_name) %>% 
+  summarise(max_prop = max(prop_gt_12hrs)) %>% 
+  arrange(desc(max_prop)) %>% 
+  slice_max(max_prop, n = 5)
+  
+# in terms of numbers
+waiting_times %>% 
+  group_by(hospital_name) %>% 
+  summarise(max_prop = max(wait_gt_12hrs)) %>% 
+  arrange(desc(max_prop))
+
+```
+
+```{r}
+
+# wait times across each hospital in the Borders healthboard
+waiting_times_prop %>% 
+  filter(hospital_name %in% top_5_hospital_props$hospital_name) %>% 
+  group_by(date_ym, hospital_name) %>% 
+  summarise(prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/
+              sum(total_attendance)) %>% 
+  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = hospital_name)) +
+  geom_line() +
+  labs(title = "Proportion of waits > 8 hours for the bottom 5 most attended healthboards")
+
+```
+## For the years 2007 to 2019, provide a summary of the effects of wait times at different times of the year.
+```{r}
+
+waiting_times_summary <- waiting_times_prop %>% 
+  filter(year <= 2019) %>% 
+  mutate(month = factor(month, levels = c("July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June"))) %>% 
+  group_by(month) %>% 
+  summarise(total_attends = mean(total_attendance),
+            prop_lt_4hrs = sum(total_attendance * prop_lt_4hrs)/ sum(total_attendance),
+            prop_gt_4hrs = sum(total_attendance * prop_gt_4hrs)/ sum(total_attendance),
+            prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/ sum(total_attendance),
+            prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/ sum(total_attendance)) 
+
+waiting_times_summary %>% 
+  ggplot(aes(x = month, y = total_attends)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  labs(y = "Average monthly attendances",
+       title = "Average A&E attendances",
+       subtitle = "From July 2007 to December 2019 ") +
+  geom_smooth()
+
+waiting_times_summary %>% 
+  ggplot(aes(x = month, y = prop_lt_4hrs, group = 1)) +
+  geom_point() +
+  labs(title = "Seasonality of proportion of visits with a wait time < 4 hours",
+         subtitle = "2007 to 2019") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_smooth()
+
+waiting_times_summary %>% 
+  ggplot(aes(x = month, y = prop_gt_4hrs, group = 1)) +
+  geom_point() +
+    labs(title = "Seasonality of proportion of visits with a wait time > 4 hours",
+         subtitle = "2007 to 2019") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_smooth()
+
+
+waiting_times_summary %>%
+  ggplot(aes(x = month, y = prop_gt_8hrs, group = 1)) +
+  geom_point() +
+    labs(title = "Seasonality of proportion of visits with a wait time > 8 hours",
+         subtitle = "2007 to 2019") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  geom_smooth()
+
+
+waiting_times_summary %>% 
+  ggplot(aes(x = month, y = prop_gt_12hrs, group = 1)) +
+  geom_point() +
+    scale_y_continuous(labels = scales::percent) +
+    labs(title = "Seasonality of proportion of visits with a wait time > 12 hours",
+         subtitle = "Pre-covid: 2007 to 2019",
+         y = "Percentage of attendances > 12 hours") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  geom_smooth(se = FALSE)
+
+
+
+
+```
+The number of A&E attendances decrease during the winter months however the proportion of wait times greater than 4hours increases significantly between November and February highlighting that the complexity of cases in the winter mean that it takes hospitals longer to discharge patients. Perhaps combining this output with the bed occupation rates during the winter months could further supplement this relationship. 
+
+
+```{r}
+
+waiting_times_prop %>% 
+  # filter(year <= 2019) %>% 
+  mutate(month = factor(month, levels = c("July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June"))) %>% 
+  group_by(month, health_board) %>% 
+  summarise(total_attends = mean(total_attendance),
+            prop_lt_4hrs = sum(total_attendance * prop_lt_4hrs)/ sum(total_attendance),
+            prop_gt_4hrs = sum(total_attendance * prop_gt_4hrs)/ sum(total_attendance),
+            prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/ sum(total_attendance),
+            prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/ sum(total_attendance)) %>% 
+  ggplot(aes(x = month, y = prop_gt_12hrs, group = health_board, colour = health_board)) +
+  geom_line() +
+  labs(title = "Seasonality of proportion of visits with a wait time > 12 hours") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
