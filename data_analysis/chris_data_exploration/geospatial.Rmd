@@ -1,0 +1,153 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(sf)
+library(here)
+library(janitor)
+
+```
+
+
+# Geospatial Data - Health Board Boundaries
+
+```{r}
+
+health_board_map <- st_read(dsn = here("raw_data/shape_files/"),
+                            layer = "SG_NHS_HealthBoards_2019") %>% 
+  clean_names()
+
+```
+
+```{r}
+
+health_board_map %>% 
+  # filter(hb_name == "Western Isles" | hb_name == "Shetland") %>% 
+  ggplot() +
+  geom_sf(aes(fill = hb_name)) +
+  theme_void() +
+  theme(legend.position = "right")
+
+```
+
+## PHS colour palette
+
+```{r}
+
+pal <- c(rgb(199, 175, 117, maxColorValue = 255),
+         rgb(124, 36, 24, maxColorValue = 255), 
+         rgb(210, 221, 213, maxColorValue = 255), 
+         rgb(168, 106, 57, maxColorValue = 255), 
+         rgb(222, 224, 227, maxColorValue = 255),
+         rgb(186, 158, 53, maxColorValue = 255), 
+         rgb(6, 57, 83, maxColorValue = 255), 
+         rgb(109, 67, 85, maxColorValue = 255)
+         )
+
+```
+
+# Testing which plotting code runs faster
+```{r}
+
+
+
+health_board_input <- c("Borders")
+
+start_time1 <- Sys.time()
+
+health_board_map %>% 
+  mutate(hb_selected = ifelse(hb_name == health_board_input, TRUE, FALSE)) %>% 
+  ggplot() +
+  geom_sf(fill = pal[5], col = "gray40") +
+  geom_sf(data = health_board_map %>% filter(hb_name == health_board_input), fill = pal[7]) +
+  theme_void() +
+  theme(legend.position = "none")
+
+duration1 <- Sys.time() - start_time1
+duration1
+
+start_time2 <- Sys.time()
+
+health_board_map %>% 
+  mutate(hb_selected = ifelse(hb_name == health_board_input, TRUE, FALSE)) %>% 
+  ggplot() +
+  geom_sf(aes(fill = hb_selected)) +
+  scale_fill_manual(values = c("TRUE" = pal[7],
+                               "FALSE" = pal[5])) +
+  theme_void() +
+  theme(legend.position = "none")
+
+duration2 <- Sys.time() - start_time2
+duration2
+
+
+```
+
+```{r}
+health_board_map %>% 
+  mutate(hb_selected = ifelse(hb_name == health_board_input, TRUE, FALSE)) %>% 
+  ggplot() +
+  geom_sf(fill = pal[5], col = "gray40") +
+  geom_sf(data = health_board_map %>% filter(hb_name == health_board_input), fill = pal[7]) +
+  theme_void() +
+  theme(legend.position = "none")
+
+```
+
+
+
+# Plot_ly
+
+```{r}
+
+library(plotly)
+
+p <- health_board_map %>% 
+  mutate(hb_selected = ifelse(hb_name == health_board_input, TRUE, FALSE)) %>% 
+  ggplot() +
+  geom_sf(aes(text = hb_name, fill = hb_selected)) +
+  scale_fill_manual(values = c("TRUE" = pal[7],
+                               "FALSE" = pal[5])) +
+  theme_void() +
+  theme(legend.position = "none")
+
+ggplotly(p, tooltip = "text")
+
+
+```
+
+```{r}
+health_board_map_simple <- health_board_map %>% 
+  st_simplify(dTolerance = 1000)
+
+health_board_map_simple %>% 
+  # filter(hb_name == "Shetland") %>% 
+  ggplot() +
+  geom_sf(aes(fill = hb_name)) +
+  theme_void()
+
+```
+
+
+```{r}
+health_board_map %>% 
+  filter(hb_name == "Shetland") %>% 
+  ggplot() +
+  geom_sf(aes(fill = hb_name))
+
+health_board_map_simple %>% 
+  # filter(hb_name == "Shetland") %>% 
+  ggplot() +
+  geom_sf(aes(fill = hb_name))
+
+```
+
+```{r}
+
+"Hello"
+
+```
+

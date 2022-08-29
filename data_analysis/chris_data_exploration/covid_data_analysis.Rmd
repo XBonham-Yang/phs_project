@@ -1,0 +1,223 @@
+---
+title: "COVID Datasets"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(janitor)
+library(lubridate)
+library(here)
+
+```
+
+# load in health board data
+```{r}
+
+hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
+  clean_names() %>% 
+  select(hb, hb_name)
+
+```
+
+
+# Demographic data - COVID
+
+```{r}
+
+admissions_raw <- read_csv(here("raw_data/covid_data/hospital_admissions_hb_agesex_20220302.csv")) %>% 
+  clean_names() %>% 
+  mutate(week_ending = ymd(week_ending))
+
+```
+
+# clean admissions data (age & sex)
+```{r}
+
+admissions <- admissions_raw %>% 
+  left_join(hb, "hb") %>% 
+  select(week_ending, hb_name, age_group, sex, admission_type, number_admissions, average20182019, percent_variation)
+
+```
+## Analysis
+
+## Total admissions (all ages and sexes, all departments)
+```{r}
+
+admissions %>% 
+  filter(age_group == "All ages" & sex == "All") %>% 
+  group_by(week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions)) +
+  geom_line() +
+  labs(title = "Total Admissions") +
+ theme_classic() +
+  labs(y = "Total Admissions",
+       col = "Age Group") +
+  theme(axis.title.x = element_blank())
+
+```
+
+## Total admissions (by sex, all ages/departments)
+```{r}
+
+admissions %>% 
+  filter(age_group == "All ages" & sex != "All" & admission_type == "All") %>% 
+  group_by(week_ending, sex) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions, colour = sex)) +
+  geom_line() +
+  labs(title = "Total Admissions - split by sex") +
+  theme_classic()
+
+# number of males and females are pretty much the same across the entire covid timeline
+
+```
+
+```{r}
+
+total_all_sexes <- admissions %>% 
+  filter(age_group == "All ages" & sex == "All" & admission_type == "All") %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+total_m_and_f <- admissions %>% 
+  filter(age_group == "All ages" & sex != "All" & admission_type == "All") %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+diff <- total_all_sexes - total_m_and_f
+diff
+
+fraction <- diff / total_all_sexes * 100
+fraction
+
+```
+
+
+## Total admissions (by age, all sexes/departments)
+```{r}
+
+admissions %>%
+  mutate(age_group = factor(age_group, levels = c("Under 5",
+                                                  "5 - 14",
+                                                  "15 - 44",
+                                                  "45 - 64",
+                                                  "65 - 74",
+                                                  "75 - 84",
+                                                  "85 and over"
+                                                  ))) %>% 
+  filter(age_group != "All ages" & sex == "All" & admission_type == "All") %>% 
+  group_by(week_ending, age_group) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions, colour = age_group)) +
+  geom_line() +
+  labs(title = "Total Admissions - split by age group") +
+  theme_classic() +
+  labs(y = "Total Admissions",
+       col = "Age Group") +
+  theme(axis.title.x = element_blank())
+
+```
+
+
+```{r}
+## Total admissions (by admission type, all sexes/age_groups)
+
+admissions %>% 
+  distinct(admission_type)
+
+
+admissions %>% 
+  filter(age_group == "All ages" & sex == "All" & admission_type != "All") %>% 
+  group_by(week_ending, admission_type) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions, colour = admission_type)) +
+  geom_line() +
+  labs(title = "Total Admissions - split by admission type") +
+  theme_classic() +
+  scale_y_continuous(labels = scales::comma) +
+  labs(y = "Total Admissions",
+       col = "Admission Type") +
+  theme(axis.title.x = element_blank(),
+        legend.title = element_text(face = "bold"))
+
+```
+
+```{r}
+
+specialty_raw <- read_csv(here("raw_data/covid_data/hospital_admissions_hb_specialty_20220302.csv")) %>% 
+  clean_names() %>% 
+  mutate(week_ending = ymd(week_ending))
+
+```
+
+## Clean data (specialty)
+```{r}
+
+specialty <- specialty_raw %>% 
+  left_join(hb, "hb") %>% 
+  select(week_ending, hb_name, admission_type, specialty, number_admissions, average20182019, percent_variation)
+
+```
+
+### Analyse data (specialty)
+
+### the number of total admissions?
+
+```{r}
+
+specialty %>% 
+  filter(admission_type == "All" & specialty == "All") %>% 
+  group_by(week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions)) +
+  geom_line()
+
+# looks like the same as the previous data
+
+```
+
+### What is the number of admissions per admission type?
+
+```{r}
+
+specialty %>% 
+  filter(admission_type != "All" & specialty == "All") %>% 
+  group_by(week_ending, admission_type) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions, col = admission_type)) +
+  geom_line() +
+  theme_classic()
+
+
+# looks the same as the previous plot
+
+```
+
+### What is the number of admissions per specialty?
+
+```{r}
+# list of unique admission numbers, i.e. the list of specialties that add up to the total admissions value 
+specialty_list <- c("Accident & Emergency", "Community", "Gynaecology", "Medical (incl. Cardiology & Cancer)", "Paediatrics (medical & surgical)", "Surgery")
+
+specialty %>% 
+  filter(admission_type == "All" & specialty != "All") %>% 
+  group_by(specialty) %>% 
+  summarise(mean_admissions = mean(number_admissions)) %>% 
+  arrange(desc(mean_admissions))
+
+specialty %>% 
+  filter(admission_type == "All" & specialty %in% specialty_list) %>% 
+  group_by(week_ending, specialty) %>% 
+  summarise(total_admissions = sum(number_admissions)) %>% 
+  ggplot(aes(x = week_ending, y = total_admissions, col = specialty)) +
+  geom_line() +
+  theme_classic() +
+  # facet_wrap(~specialty, scales = "free_y") +
+  theme(legend.position = "bottom",
+        axis.title.x = element_blank()) +
+  labs(y = "Total Admissions",
+       title = "Breakdown of total admissions per specialty")
+
+# the top specialties are Medical (incl. cardiology & cancer) and surgery.
+
+```
