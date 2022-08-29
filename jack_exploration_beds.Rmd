@@ -34,14 +34,15 @@ beds_treatment_specialty <- beds_treatment_specialty %>%
 ## time series of avg occupancy by location 
 ```{r}
 beds_available <- beds_treatment_specialty %>% 
-  mutate(quarter = yq(quarter)) %>%
-  select(quarter, hb, specialty_name, average_available_staffed_beds, percentage_occupancy) %>% 
+  mutate(quarter = yq(quarter), month = month(quarter, label = TRUE, abbr = TRUE),
+         year = year(quarter)) %>%
+  select(quarter, month, year, hb, specialty_name, average_available_staffed_beds, percentage_occupancy) %>% 
   distinct()
 
 beds_available <- left_join(beds_available, area_codes, "hb") %>% 
   select(-c(hb_date_enacted, hb_date_archived, country)) %>% mutate(urban_area = if_else(hb_name %in% c("NHS Greater Glasgow and Clyde", "NHS Lanarkshire", "NHS Lothian"), "high population", "low population")) #based on greater than 500,000
 
-beds_available <- tsibble(beds_available, index = "quarter", key = c(hb, specialty_name, average_available_staffed_beds, percentage_occupancy, hb_name, urban_area))
+beds_available <- tsibble(beds_available, index = "quarter", key = c(hb, month, year, specialty_name, average_available_staffed_beds, percentage_occupancy, hb_name, urban_area))
 
 beds_available %>% 
   group_by(hb_name) %>% 
@@ -111,11 +112,129 @@ beds_available %>%
 beds_available %>% 
   group_by(specialty_name) %>% 
   summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
-  filter(specialty_name == "Mental Health Grouping") %>% #sub out for desired area
+  filter(specialty_name == "Mental Health Grouping" | specialty_name == "Emergency Grouping" | specialty_name == "Cardiology") %>% #sub out for desired area
   ggplot()+
-  geom_line(aes(x = quarter, y = avg_occupancy))+
+  geom_line(aes(x = quarter, y = avg_occupancy, colour = specialty_name))+
   labs(title = "Avg. Beds Available by Specialty",
        x = "Date",
        y = "Percentage Occupancy")
+
+
+unique(beds_available$sp)
+```
+
+## Seasonality of occupancy
+```{r}
+beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE)) %>% 
+  group_by(month) %>% 
+  summarise(avg_beds = mean(percentage_occupancy)) %>% 
+  ggplot(aes(x = factor(month, levels = c("Jul", "Oct", "Jan", "Apr")), y = avg_beds))+
+  geom_point()+
+  geom_line(group = 1)+
+  labs(title = "Percentage Occupancy Seasonality",
+       x = "Month",
+       y = "Perecentage Occupncy")
+
+beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year <= 2019) %>% 
+  group_by(month) %>% 
+  summarise(avg_beds = mean(percentage_occupancy)) %>% 
+  ggplot(aes(x = factor(month, levels = c("Jul", "Oct", "Jan", "Apr")), y = avg_beds))+
+  geom_point()+
+  geom_line(group = 1)+
+  labs(title = "Percentage Occupancy Seasonality",
+       x = "Month",
+       y = "Perecentage Occupncy")
+
+beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year > 2019) %>% 
+  group_by(month) %>% 
+  summarise(avg_beds = mean(percentage_occupancy)) %>% 
+  ggplot(aes(x = factor(month, levels = c("Jul", "Oct", "Jan", "Apr")), y = avg_beds))+
+  geom_point()+
+  geom_line(group = 1)+
+  labs(title = "Percentage Occupancy Seasonality",
+       x = "Month",
+       y = "Perecentage Occupncy")
+```
+```{r}
+beds_treatment_specialty <- left_join(beds_treatment_specialty, area_codes, "hb") %>% 
+  select(-c(hb_date_enacted, hb_date_archived, country)) %>% mutate(urban_area = if_else(hb_name %in% c("NHS Greater Glasgow and Clyde", "NHS Lanarkshire", "NHS Lothian"), "high population", "low population"))
+
+beds_treatment_specialty %>% #pre covid dates, all health baords
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year <= 2019) %>% 
+  group_by(month) %>% 
+  summarise(avg_beds = mean(percentage_occupancy)) %>% 
+  ggplot(aes(x = factor(month, levels = c("Jul", "Oct", "Jan", "Apr")), y = avg_beds))+
+  geom_point()+
+  geom_line(group = 1)+
+  labs(title = "Percentage Occupancy Seasonality",
+       x = "Month",
+       y = "Perecentage Occupncy")
+
+beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year > 2019,
+         hb_name == "NHS Lothian") %>% #filter based on map input
+  group_by(month) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy)) %>%
+  ggplot(aes(x = factor(month, levels = c("Jul", "Oct", "Jan", "Apr")), y = avg_occupancy))+
+  geom_point()+
+  geom_line(group = 1)+
+  labs(title = "Percentage Occupancy Seasonality",
+       x = "Month",
+       y = "Perecentage Occupncy")
+
+```
+
+##POTENTIAL PLOT FOR DASHBOARD
+```{r}
+df1 <- beds_treatment_specialty %>% #pre covid dates, all health baords
+  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
+  filter(year <= 2019, hb_name == "NHS Lothian") %>% # hb selected by user input
+  group_by(quarter) %>% 
+  summarise(avg_occupancy = sum(total_occupied_beddays)/sum(all_staffed_beddays))
+
+
+df2 <- beds_treatment_specialty %>% 
+  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
+  filter(year > 2019, hb_name == "NHS Lothian") %>% #post covid, filter based on map input
+  group_by(year, quarter) %>% 
+  summarise(avg_occupancy = sum(total_occupied_beddays)/sum(all_staffed_beddays))
+
+
+df2 %>% 
+  ggplot(aes(x = quarter, y = avg_occupancy, colour = factor(year), group = year))+
+  geom_point() +
+  geom_line() +
+  geom_line(data = df1, aes(x = quarter, y = avg_occupancy, group = 1, col = "Baseline")) +
+  geom_point(data = df1, aes(x = quarter, y = avg_occupancy, group = 1, col = "Baseline")) +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
+                                               "2020" = "red",
+                                               "2021" = "green")) +
+  labs(title = "Avg Occupancy Bed Occupancy vs Baseline",
+       x = "Quarter",
+       y = "Avg Occupancy Rate")
+```
+```{r}
+beds_treatment_specialty %>%
+  filter(hb == "S08000015") %>% 
+  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
+  group_by(quarter) %>% 
+  summarise(sum = sum(total_occupied_beddays)/sum(all_staffed_beddays))
+
+beds_treatment_specialty %>%
+  filter(hb == "S08000015") %>% 
+  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
+  group_by(quarter) %>% 
+  summarise(sum = mean(percentage_occupancy))
 ```
 
