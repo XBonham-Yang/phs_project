@@ -1,0 +1,191 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(tsibble)
+library(lubridate)
+
+```
+
+```{r}
+
+age_sex_raw <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_age_and_sex.csv"))
+
+```
+
+```{r}
+
+age_sex <- age_sex_raw %>% 
+  clean_names() %>% 
+  select(-ends_with("qf")) %>% 
+  select(quarter:episodes)
+
+age_sex %>% 
+  distinct(hb)
+
+age_sex %>% 
+  filter(quarter == "2016Q4", hb == "S08000015", location == "A111H", 
+         admission_type == "Elective Inpatients") %>%
+  pivot_wider(names_from = age, values_from = episodes)
+
+```
+
+```{r}
+
+simd_raw <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd.csv")) %>% 
+  clean_names() %>% 
+  select(-ends_with("qf")) %>% 
+  select(quarter:episodes)
+
+simd_raw %>% 
+  filter(quarter == "2016Q4", hb == "S08000015", location == "A111H", 
+         admission_type == "Elective Inpatients") 
+  
+
+```
+
+
+```{r}
+
+age_sex %>%
+  group_by(quarter, sex) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = sex, values_from = total_episodes) %>% 
+  mutate(prop_female = Female / (Female + Male),
+         prop_male = Male / (Female + Male)) %>% 
+  select(quarter, prop_female, prop_male) %>% 
+  pivot_longer(prop_female:prop_male, names_to = "sex", values_to = "proportion") %>% 
+  ggplot(aes(x = quarter, y = proportion, col = sex, group = sex)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::percent) +
+  scale_colour_discrete(labels = c("Female", "Male")) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Percentage",
+       title = "Breakdown of genders attending hospitals",
+       col = "Gender")
+
+sex_prop <- age_sex %>%
+    mutate(year = as.numeric(str_sub(quarter, 1, 4)),
+    is_covid_year = case_when(
+    year <= 2019 ~ "Pre-Covid", #
+    quarter == "2020Q2" ~ "Covid"), # set covid to be Q2 of 2020
+  is_covid_year = factor(is_covid_year, c("Pre-Covid", "Covid"))) %>%
+  filter(!is.na(is_covid_year)) %>% 
+  group_by(is_covid_year, sex) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = sex, values_from = total_episodes) %>% 
+  mutate(prop_female = round(Female / (Female + Male) * 100, 1),
+         prop_male = round(Male / (Female + Male) * 100, 1)) %>% 
+  select(is_covid_year, prop_female, prop_male)
+
+t(sex_prop)
+
+sex_prop %>% 
+  pivot_longer(prop_female:prop_male, names_to = "sex", values_to = "proportion") %>% 
+  ggplot(aes(x = is_covid_year, y = proportion, fill = sex, group = sex)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(expand = c(0,0)) +
+  scale_fill_discrete(labels = c("Female", "Male")) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Percentage (%)",
+       title = "Breakdown of genders attending hospitals",
+       fill = "Gender")
+
+
+
+```
+
+```{r}
+
+age_sex_covid <- age_sex %>%
+    mutate(sex = factor(sex, c("Male", "Female")),
+           year = as.numeric(str_sub(quarter, 1, 4)),
+    is_covid_year = case_when(
+    year <= 2019 ~ "Pre-Covid", #
+    quarter == "2020Q2" ~ "Covid"), # set covid to be Q2 of 2020
+  is_covid_year = factor(is_covid_year, c("Pre-Covid", "Covid"))) %>%
+  filter(!is.na(is_covid_year))
+
+total_pre_covid <- age_sex_covid %>% 
+  group_by(is_covid_year) %>% 
+  summarise(tot_episodes = sum(episodes))
+
+# faceted distribution of ages between pre- and post-covid
+age_sex_covid %>% 
+  group_by(is_covid_year, age) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = age, y = total_episodes, fill = is_covid_year)) +
+  geom_col() +
+  facet_wrap(~is_covid_year, scales = "free_y") +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Count of Episodes",
+       title = "Breakdown of age groups attending hospitals",
+       subtitle = "Pre-covid (<2020) and Covid (=2020Q2)",
+       fill = "") +
+    scale_y_continuous(expand = c(0,0),
+                       labels = scales::comma)
+
+
+# proportion of age groups pre- and post-covid
+age_sex_covid %>% 
+  group_by(is_covid_year, age) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  mutate(prop_age_group = if_else(is_covid_year == "Pre-Covid", 
+                                    total_episodes / total_pre_covid$tot_episodes[1],
+                                    total_episodes / total_pre_covid$tot_episodes[2])) %>%  
+  select(-total_episodes) %>% 
+  ggplot(aes(x = age, y = prop_age_group, fill = is_covid_year)) +
+  geom_col(position = "dodge") +
+  scale_y_continuous(expand = c(0,0),
+                     labels = scales::percent) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Percentage (%)",
+       title = "Breakdown of age groups attending hospitals",
+       subtitle = "Pre-covid (<2020) and Covid (=2020Q2)",
+       fill = "")
+
+
+```
+
+Combined age and gender demographic
+```{r}
+
+# proportion of age groups pre- and post-covid
+age_sex_covid %>% 
+  group_by(is_covid_year, sex, age) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  mutate(prop_age_group = if_else(is_covid_year == "Pre-Covid", 
+                                    total_episodes / total_pre_covid$tot_episodes[1],
+                                    total_episodes / total_pre_covid$tot_episodes[2])) %>%  
+  select(-total_episodes) %>% 
+  ggplot(aes(x = age, y = prop_age_group, fill = is_covid_year)) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ sex) +
+  scale_y_continuous(expand = c(0,0),
+                     labels = scales::percent,
+                     limits = c(0, 0.12)) +
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1)) +
+  labs(y = "Percentage (%)",
+       title = "How do patient demographics change pre- and post-covid?",
+       subtitle = "Pre-covid (<2020) and Covid (2020 Q2)",
+       fill = "")
+
+
+```
+

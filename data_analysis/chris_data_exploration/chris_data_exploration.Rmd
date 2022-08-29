@@ -783,3 +783,319 @@ beds %>%
 
 ```
 
+# Wait times - baseline (pre-covid vs covid)
+
+## Percentage of wait times within target (<4hrs) 
+
+```{r}
+
+# pre-covid <= 2019, covid => 2020
+
+avg_wt_target_pre_covid <- waiting_times %>% 
+  filter(year <= 2019) %>% 
+  group_by(month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_lt_4hrs = sum(wait_lt_4hrs),
+            target_wait_prop = total_wait_lt_4hrs / total_attendance)
+
+avg_wt_target_pre_covid %>% 
+  ggplot(aes(x = month, y = target_wait_prop, group = 1)) +
+  geom_line() +
+  geom_smooth(se = 0)
+
+waiting_times %>% 
+  filter(year >= 2020) %>%
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_lt_4hrs = sum(wait_lt_4hrs),
+            target_wait_prop = total_wait_lt_4hrs / total_attendance) %>% 
+  ggplot(aes(x = month, y = target_wait_prop,
+                group = factor(year), col = factor(year))) +
+  geom_line() +
+  geom_point() +
+  geom_line(data = avg_wt_target_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline"),
+              size = 1) +
+  geom_point(data = avg_wt_target_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline")) +
+  theme_classic() +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
+                                               "2020" = "red",
+                                               "2021" = "green",
+                                               "2022" = "orange")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = "Percentage of admissions (%)",
+       title = "Proportion of waiting times greater than 12 hours",
+       subtitle = "Pre-covid (2007-2019) vs covid (2020+)",
+       col = "Year") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+```
+
+## Percentage of wait times >8hrs 
+
+```{r}
+
+avg_wt_gt_8hrs_pre_covid <- waiting_times %>% 
+  filter(year <= 2019) %>% 
+  group_by(month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_gt_8hrs = sum(wait_gt_8hrs),
+            target_wait_prop = total_wait_gt_8hrs / total_attendance)
+
+avg_wt_gt_8hrs_pre_covid %>% 
+  ggplot(aes(x = month, y = target_wait_prop, group = 1)) +
+  geom_line() +
+  geom_smooth(se = 0)
+
+waiting_times %>% 
+  filter(year >= 2020) %>%
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_gt_8hrs = sum(wait_gt_8hrs),
+            target_wait_prop = total_wait_gt_8hrs / total_attendance) %>% 
+  ggplot(aes(x = month, y = target_wait_prop,
+                group = factor(year), col = factor(year))) +
+  geom_line() +
+  geom_point() +
+  geom_line(data = avg_wt_gt_8hrs_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline"),
+              size = 1) +
+    geom_point(data = avg_wt_gt_8hrs_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline")) +
+  theme_classic() +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue", "2020" = "red", "2021" = "green", "2022" = "orange")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = "Percentage of admissions (%)",
+       title = "Proportion of waiting times greater than 8 hours",
+       subtitle = "Pre-covid (2007-2019) vs covid (2020+)",
+       col = "Year") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+## Percentage of wait times >12hrs 
+
+```{r}
+
+avg_wt_gt_12hrs_pre_covid <- waiting_times %>% 
+  filter(year <= 2019) %>% 
+  group_by(month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_gt_12hrs = sum(wait_gt_12hrs),
+            target_wait_prop = total_wait_gt_12hrs / total_attendance)
+
+avg_wt_gt_12hrs_pre_covid %>% 
+  ggplot(aes(x = month, y = target_wait_prop, group = 1)) +
+  geom_line() +
+  geom_smooth(se = 0)
+
+waiting_times %>% 
+  filter(year >= 2020) %>%
+  group_by(year, month) %>% 
+  summarise(total_attendance = sum(total_attendance),
+            total_wait_gt_12hrs = sum(wait_gt_12hrs),
+            target_wait_prop = total_wait_gt_12hrs / total_attendance) %>% 
+  ggplot(aes(x = month, y = target_wait_prop,
+                group = factor(year), col = factor(year))) +
+  geom_line() +
+  geom_point() +
+  geom_line(data = avg_wt_gt_12hrs_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline"),
+              size = 1) +
+    geom_point(data = avg_wt_gt_12hrs_pre_covid, aes(x = month, y = target_wait_prop,
+                                                group = 1, colour = "Baseline")) +
+  theme_classic() +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
+                                               "2020" = "red",
+                                               "2021" = "green",
+                                               "2022" = "orange")) +
+  scale_y_continuous(labels = scales::percent) +
+  labs(y = "Percentage of admissions (%)",
+       title = "Proportion of waiting times greater than 12 hours",
+       subtitle = "Pre-covid (2007-2019) vs covid (2020+)",
+       col = "Year") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+# Jack's question:
+
+```{r}
+
+beds_treatment_specialty <- beds
+
+
+df1 <- beds_treatment_specialty %>% #pre covid dates, all health baords
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year <= 2019, hb == "S08000015") %>% # hb selected by user input
+  group_by(month) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy, na.rm = TRUE))
+
+
+df2 <- beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year > 2019, hb == "S08000015") %>% #post covid, filter based on map input
+  group_by(year, month) %>% 
+  summarise(avg_occupancy = mean(percentage_occupancy, na.rm = TRUE))
+
+## no longer required
+# df3 <- df1 %>% 
+#   mutate(Type = "baseline") %>% 
+#   bind_rows(df2 %>% 
+#               mutate(Type = "post-covid"))
+
+df2 %>% 
+  ggplot(aes(x = month, y = avg_occupancy, colour = factor(year), group = year)) +
+  geom_point() +
+  geom_line() +
+  geom_line(data = df1, aes(x = month, y = avg_occupancy, group = 1, col = "Baseline")) +
+  geom_point(data = df1, aes(x = month, y = avg_occupancy, group = 1, col = "Baseline")) +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
+                                               "2020" = "red",
+                                               "2021" = "green")) +
+  labs(title = "Avg Occupancy by Health Board vs Baseline", # need to update these
+       x = "Month",
+       y = "Avg Occupancy Rate")
+
+
+df2_wide <- df2 %>% 
+  pivot_wider(names_from = year, values_from = avg_occupancy)
+
+df12 <- df1 %>% 
+  rename(baseline = avg_occupancy) %>% 
+  left_join(df2_wide, "month")
+
+df12
+```
+
+```{r}
+
+df3 <- beds_treatment_specialty %>% #pre covid dates, all health baords
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year <= 2019, hb == "S08000015") %>% # hb selected by user input
+  group_by(month) %>% 
+  summarise(total_available = sum(all_staffed_beddays), 
+            total_occupied = sum(total_occupied_beddays),
+            avg_occupancy = total_occupied / total_available)
+
+
+df4 <- beds_treatment_specialty %>% 
+  mutate(date = yq(quarter), month = month(date, label = TRUE, abbr = TRUE),
+         year = year(date)) %>% 
+  filter(year > 2019, hb == "S08000015") %>% #post covid, filter based on map input
+  group_by(year, month) %>% 
+  summarise(total_available = sum(all_staffed_beddays), 
+            total_occupied = sum(total_occupied_beddays),
+            avg_occupancy = total_occupied / total_available)
+
+df4 %>% 
+  ggplot(aes(x = month, y = avg_occupancy, colour = factor(year), group = year)) +
+  geom_point() +
+  geom_line() +
+  geom_line(data = df3, aes(x = month, y = avg_occupancy, group = 1, col = "Baseline")) +
+  geom_point(data = df3, aes(x = month, y = avg_occupancy, group = 1, col = "Baseline")) +
+  scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
+                                               "2020" = "red",
+                                               "2021" = "green")) +
+  labs(title = "Avg Occupancy by Health Board vs Baseline", # need to update these
+       x = "Month",
+       y = "Avg Occupancy Rate") +
+  scale_y_continuous(labels = scales::percent)
+
+
+df4_wide <- df2 %>% 
+  pivot_wider(names_from = year, values_from = avg_occupancy)
+
+df34 <- df3 %>% 
+  rename(baseline = avg_occupancy) %>% 
+  left_join(df2_wide, "month") %>% 
+  select(-total_available, - total_occupied) %>% 
+  mutate(baseline = baseline * 100)
+
+```
+
+```{r}
+# weighted average occupancy rate
+df34
+
+```
+
+```{r}
+# average of occupancy percentages
+df12
+
+```
+# how does bed usage change over time
+```{r}
+
+beds %>%
+  group_by(quarter) %>%
+  summarise(beds_available = sum(all_staffed_beddays),
+            beds_occupied = sum(total_occupied_beddays)) %>%
+  pivot_longer(beds_available:beds_occupied, names_to = "bed_type",
+               values_to = "num_beds") %>% 
+  ggplot(aes(x = quarter, y = num_beds, colour = bed_type, group = bed_type)) +
+  geom_line() +
+  scale_y_continuous(labels = scales::comma) +
+  theme_classic() +
+  theme(axis.text = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  labs(y = "Number of bed days",
+       title = "Number of beds available/occupied over time",
+       col = "Bed Type")
+
+```
+# bed use by specialty
+```{r}
+
+beds %>%
+  group_by(quarter, specialty_name) %>%
+  summarise(beds_available = sum(all_staffed_beddays),
+            beds_occupied = sum(total_occupied_beddays)) %>%
+  pivot_longer(beds_available:beds_occupied, names_to = "bed_type",
+               values_to = "num_beds") %>% 
+  ggplot(aes(x = quarter, y = num_beds, colour = bed_type, group = specialty_name)) +
+  geom_line() +
+  facet_wrap(~bed_type) +
+  scale_y_continuous(labels = scales::comma) +
+  theme_classic() +
+  theme(axis.text = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  labs(y = "Number of bed days",
+       title = "Number of beds available/occupied over time",
+       col = "Bed Type")
+
+```
+
+```{r}
+
+beds %>% 
+  mutate(year = as.numeric(str_extract(quarter, "[0-9]{4}")),
+    is_covid_year = case_when(
+    year <= 2019 ~ FALSE,
+    year >= 2020 ~ TRUE
+    )) %>% 
+  group_by(specialty_name, is_covid_year) %>% 
+  summarise(beds_available = sum(all_staffed_beddays),
+            beds_occupied = sum(total_occupied_beddays)) %>% 
+  select(specialty_name, is_covid_year, beds_occupied) %>%  
+  pivot_wider(names_from = is_covid_year, values_from = beds_occupied) %>% 
+  rename("pre_covid" = "FALSE", "covid" = "TRUE") %>% 
+  drop_na() %>% 
+  mutate(diff_occupied = covid - pre_covid,
+         diff_occupied_pc = ((covid / pre_covid) - 1) * 100) %>% 
+  filter(diff_occupied_pc > 0) %>% 
+  arrange(desc(diff_occupied_pc))
+  
+
+```
+
