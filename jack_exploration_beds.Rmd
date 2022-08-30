@@ -220,21 +220,8 @@ df2 %>%
   scale_color_manual(name = "Year", values = c("Baseline" = "darkblue",
                                                "2020" = "red",
                                                "2021" = "green")) +
-  labs(title = "Avg Occupancy Bed Occupancy vs Baseline",
+  labs(title = "Quarterly Bed Occupancy vs Baseline",
        x = "Quarter",
        y = "Avg Occupancy Rate")
-```
-```{r}
-beds_treatment_specialty %>%
-  filter(hb == "S08000015") %>% 
-  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
-  group_by(quarter) %>% 
-  summarise(sum = sum(total_occupied_beddays)/sum(all_staffed_beddays))
-
-beds_treatment_specialty %>%
-  filter(hb == "S08000015") %>% 
-  separate(quarter, c("year", "quarter"), sep = "Q") %>% 
-  group_by(quarter) %>% 
-  summarise(sum = mean(percentage_occupancy))
 ```
 
