@@ -1,7 +1,7 @@
 
 library(shiny)
 
-# Define server logic required to draw a histogram
+
 shinyServer(function(input, output) {
   
   output$hb_map <- renderPlot({
@@ -88,14 +88,17 @@ shinyServer(function(input, output) {
              ymax = rescale(proportion, to = pi*c(-.5,.5), from = 0:1)) %>%
       ggplot(aes(x0 = 0, y0 = 0, r0 = .5, r = 1)) + 
       geom_arc_bar(aes(start = - pi / 2, end = pi / 2), fill = "grey80") +
-      geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax, fill = proportion)) +
+      geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax,
+                       fill = proportion)) +
       coord_fixed() +
       facet_wrap(~ is_covid_year) +
       ylim(-0.3, 1) +
       geom_text(aes(x = 0, y = 0.01,
                     label = scales::percent(proportion, accuracy = 0.1)),
                 size = 6.5) +
-      geom_text(aes(x = 0, y = -0.25), label = c("Pre-Covid", "During Covid"), family= "Poppins Light", size=4.2) +
+      geom_text(aes(x = 0, y = -0.25),
+                label = c("Pre-Covid", "During Covid"),
+                size = 4.2) +
       theme_void() +
       theme(strip.background = element_blank(),
             strip.text = element_blank(),
@@ -106,4 +109,68 @@ shinyServer(function(input, output) {
     
   })
   
+  total_admissions <- reactive({specialties %>% 
+    filter(hb_name %in% input$health_board_input) %>% 
+    group_by(is_covid_year) %>% 
+    filter(admission_type == "All Inpatients and Day cases") %>% 
+    summarise(total_admissions = sum(episodes)) %>% pull()})
+  
+  change_in_specialties <- reactive({specialties %>% 
+    filter(hb_name %in% input$health_board_input) %>% 
+    group_by(specialty_name, is_covid_year) %>% 
+    summarise(total_episodes = sum(episodes)) %>% 
+    pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+    rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+    mutate(pre_covid_year_prop = pre_covid_year / total_admissions()[1],
+           covid_year_prop = covid_year /total_admissions()[2],
+           percentage_change = covid_year_prop - pre_covid_year_prop)%>% 
+      arrange(desc(percentage_change)) %>% head(5) %>% 
+      filter(percentage_change > 0)  
+  })
+
+    output$hb_map <- renderPlot({
+
+      health_board_map %>%
+        ggplot() +
+        geom_sf(fill = pal[5], col = "gray40") +
+        geom_sf(data = health_board_map %>%
+                  filter(hb_name %in% input$health_board_input),
+                fill = pal[7]) +
+        theme_void()
+   
+
+    })
+    
+
+    output$spe_plot <- renderPlot({
+        ggplot(change_in_specialties())+
+          aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+                   y = percentage_change) +
+        geom_col(aes(fill = specialty_name)) +
+        theme_classic() +
+        scale_y_continuous(labels = percent_format())+
+        theme(axis.title.x = element_blank(),
+              axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+        labs(y = "Percentage Increase (%)",
+             title = "Increase in hospital admissions (by specialty) - pre-Covid vs Covid")
+    })
+      
+
+    output$beds_vs_time <- renderPlotly({
+      
+      tsibble(beds_available, index = "wheny", key = c(hb, month, all_staffed_beddays, total_occupied_beddays, year, population_catchment, specialty_name, hb_name))%>% 
+        mutate(hb_name = str_remove(hb_name, "NHS"))%>% 
+        group_by(hb_name) %>% 
+        summarise(avg_occupancy = sum(total_occupied_beddays / sum(all_staffed_beddays))*100)%>%  
+        ungroup() %>% 
+        filter(hb_name %in% input$health_board_input) %>%
+        ggplot(aes(x = wheny, y = avg_occupancy, colour = hb_name))+
+        geom_line()+
+        labs(title = "Avg. Beds Available by Population Status",
+             x = "Date",
+             y = "Percentage Occupancy")+
+        theme(panel.background = element_blank())
+
+    })
+
 })

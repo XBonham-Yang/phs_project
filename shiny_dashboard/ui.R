@@ -5,7 +5,6 @@ library(shiny)
 library(shinyWidgets)
 
 
-# Define UI for application that draws a histogram
 shinyUI(fluidPage(
   
   fluidRow(
@@ -17,19 +16,17 @@ shinyUI(fluidPage(
   
   fluidRow(
     
-    column(width = 3, offset = 0,
+    column(width = 2, offset = 0,
            pickerInput("health_board_input",
                        "Select the health board?",
                        choices = hb_choices,
                        selected = hb_choices,
-                       options = list(`actions-box` = TRUE),   # build buttons for collective selection
-                       multiple = T)
+                       options = list(`actions-box` = TRUE),
+                       multiple = T),
+           plotOutput("hb_map") 
+
            ),
-    column(width = 6,
-           
-           plotOutput("hb_map")           
-           ),
-    
+
   ),
   
   fluidRow(
@@ -41,7 +38,20 @@ shinyUI(fluidPage(
            plotOutput("wait_times_plot")           
     )
     
+           ),
+  
+
+    fluidRow(
+    column(width = 5,
+           plotOutput("spe_plot")),
+
+    column(width = 6, 
+           plotlyOutput("beds_vs_time"))
+
   )
+  
+
+  
 )
 )
 
