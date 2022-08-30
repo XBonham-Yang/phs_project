@@ -303,7 +303,7 @@ total_admissions <- specialties %>%
   #filter(hb_name %in% c(	"NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
   group_by(is_covid_year) %>% 
   filter(admission_type == "All Inpatients and Day cases") %>% 
-  summarise(total_admissions = sum(episodes)) 
+  summarise(total_admissions = sum(episodes)) %>% pull()
   
 
 
@@ -395,6 +395,24 @@ geom_col(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
   
   
 
+```{r}
+ total_admissions <- specialties %>% 
+    #filter(hb_name %in% input$health_board_input) %>% 
+    group_by(is_covid_year) %>% 
+    filter(admission_type == "All Inpatients and Day cases") 
+    summarise(total_admissions = sum(episodes)) %>% full_join(specialties)%>% 
+    #filter(hb_name %in% input$health_board_input) %>% 
+    group_by(specialty_name, is_covid_year) %>% 
+    summarise(total_episodes = sum(episodes)) %>% 
+    pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+    rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+    mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
+           covid_year_prop = covid_year /total_admissions[2],
+           percentage_change = covid_year_prop - pre_covid_year_prop)%>% 
+      arrange(desc(percentage_change)) %>% head(5) %>% 
+      filter(percentage_change > 0)  
+
+```
 
 
 

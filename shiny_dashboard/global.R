@@ -4,6 +4,11 @@ library(janitor)
 library(sf)
 library(here)
 library(plotly)
+library(here)
+library(reshape2)
+library(ggplot2)
+library(infer)
+library(scales)
 
 
 

@@ -1,5 +1,6 @@
 
 library(shiny)
+library(tidyverse)
 
 
 shinyServer(function(input, output) {
@@ -8,7 +9,7 @@ shinyServer(function(input, output) {
     filter(hb_name %in% input$health_board_input) %>% 
     group_by(is_covid_year) %>% 
     filter(admission_type == "All Inpatients and Day cases") %>% 
-    summarise(total_admissions = sum(episodes)) })
+    summarise(total_admissions = sum(episodes)) %>% pull()})
   
   change_in_specialties <- reactive({specialties %>% 
     filter(hb_name %in% input$health_board_input) %>% 
@@ -16,9 +17,11 @@ shinyServer(function(input, output) {
     summarise(total_episodes = sum(episodes)) %>% 
     pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
     rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
-    mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
-           covid_year_prop = covid_year /total_admissions[2],
-           percentage_change = covid_year_prop - pre_covid_year_prop)
+    mutate(pre_covid_year_prop = pre_covid_year / total_admissions()[1],
+           covid_year_prop = covid_year /total_admissions()[2],
+           percentage_change = covid_year_prop - pre_covid_year_prop)%>% 
+      arrange(desc(percentage_change)) %>% head(5) %>% 
+      filter(percentage_change > 0)  
   })
 
     output$hb_map <- renderPlot({
@@ -33,13 +36,10 @@ shinyServer(function(input, output) {
 
     })
     
-    output$sep_plot <- renderPlot({
-      change_in_specialties %>% 
-        arrange(desc(percentage_change)) %>% 
-        head(5) %>% 
-        filter(percentage_change > 0) %>% 
-        ggplot(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
-                   y = percentage_change)) +
+    output$spe_plot <- renderPlot({
+        ggplot(change_in_specialties())+
+          aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+                   y = percentage_change) +
         geom_col(aes(fill = specialty_name)) +
         theme_classic() +
         scale_y_continuous(labels = percent_format())+
