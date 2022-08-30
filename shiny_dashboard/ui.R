@@ -6,13 +6,9 @@ library(shinyWidgets)
 
 
 shinyUI(fluidPage(
-  
-  fluidRow(
-    
-    column(width = 12, 
-           "How has covid affected Scotland's Hospitals?"
-           )
-  ),
+  titlePanel(
+    h1("How has covid affected Scotland's Hospitals?",
+             align = "center")),
   
   fluidRow(
     
