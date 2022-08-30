@@ -1059,11 +1059,12 @@ beds %>%
 
 beds %>%
   group_by(quarter, specialty_name) %>%
+  # filter(specialty_name %in% c("Clinical Radiology", "Intensive Care Medicine")) %>% 
   summarise(beds_available = sum(all_staffed_beddays),
             beds_occupied = sum(total_occupied_beddays)) %>%
   pivot_longer(beds_available:beds_occupied, names_to = "bed_type",
                values_to = "num_beds") %>% 
-  ggplot(aes(x = quarter, y = num_beds, colour = bed_type, group = specialty_name)) +
+  ggplot(aes(x = quarter, y = num_beds, colour = specialty_name, group = specialty_name)) +
   geom_line() +
   facet_wrap(~bed_type) +
   scale_y_continuous(labels = scales::comma) +
