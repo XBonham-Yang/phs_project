@@ -17,11 +17,16 @@ pal <- c(rgb(199, 175, 117, maxColorValue = 255),
          rgb(109, 67, 85, maxColorValue = 255)
 )
 
-health_board_map <- st_read(dsn = here("raw_data/shape_files/"),
-                            layer = "SG_NHS_HealthBoards_2019") %>% 
-  
-  clean_names() %>% 
-  st_simplify(dTolerance = 1000) %>% 
-  st_cast("MULTIPOLYGON")
+health_board_map <- st_read(dsn = here("clean_data/"),
+                                       layer = "health_board_simple")
 
-  
+demo_data <- read_csv(here("clean_data/demo_clean.csv"))
+
+# Input Choices -----------------------------------------------------------
+
+hb_choices <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
+  clean_names() %>% 
+  distinct(hb_name) %>% 
+  mutate(hb_name = str_remove(hb_name, "NHS ")) %>% 
+  arrange(hb_name) %>% 
+  pull()
