@@ -8,6 +8,8 @@ library(ggplot2)
 library(tsibble)
 library(tsibbledata)
 library(lubridate)
+library(here)
+library(plotly)
 ```
 
 >data from end of 2016 - end of 2021
@@ -20,30 +22,51 @@ library(lubridate)
           > forecast based on pre covid data and compare to actual with all data      
           
 ```{r}
-area_codes <- read_csv("raw_data/general/hb14_hb19.csv") %>% 
+area_codes <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
   janitor::clean_names()
 
-beds_treatment_specialty <- read_csv("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv") %>% 
+beds_treatment_specialty <- read_csv(here("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
   janitor::clean_names()
 
 beds_treatment_specialty <- beds_treatment_specialty %>% 
   mutate(percentage_occupancy = coalesce(percentage_occupancy, median(percentage_occupancy, na.rm = TRUE)))
-```
 
-
-## time series of avg occupancy by location 
-```{r}
 beds_available <- beds_treatment_specialty %>% 
-  mutate(quarter = yq(quarter), month = month(quarter, label = TRUE, abbr = TRUE),
-         year = year(quarter)) %>%
-  select(quarter, month, year, hb, specialty_name, average_available_staffed_beds, percentage_occupancy) %>% 
+  mutate(wheny = yq(quarter), month = month(wheny, label = TRUE, abbr = TRUE),
+         year = year(wheny)) %>%
+  select(wheny, month, year, hb, specialty_name, all_staffed_beddays, total_occupied_beddays, percentage_occupancy) %>% 
   distinct()
 
 beds_available <- left_join(beds_available, area_codes, "hb") %>% 
-  select(-c(hb_date_enacted, hb_date_archived, country)) %>% mutate(urban_area = if_else(hb_name %in% c("NHS Greater Glasgow and Clyde", "NHS Lanarkshire", "NHS Lothian"), "high population", "low population")) #based on greater than 500,000
+  select(-c(hb_date_enacted, hb_date_archived, country)) %>% 
+  mutate(population_catchment = if_else(hb_name %in% c("NHS Greater Glasgow and Clyde", "NHS Lanarkshire", "NHS Lothian"), "high population", "low population")) #based on greater than 500,000
 
-beds_available <- tsibble(beds_available, index = "quarter", key = c(hb, month, year, specialty_name, average_available_staffed_beds, percentage_occupancy, hb_name, urban_area))
+beds_available <- tsibble(beds_available, index = "wheny", key = c(hb, month, all_staffed_beddays, total_occupied_beddays, year, population_catchment, specialty_name, hb_name))%>% 
+  mutate(hb_name = str_remove(hb_name, "NHS"))
 
+write_csv(beds_available, "beds_available.csv")
+```
+
+## show all population status' as percentage
+```{r}
+beds_available %>% 
+  #filter(hb_name == "NHS Lothian") %>% 
+  group_by(population_catchment) %>% 
+  summarise(avg_occupancy = sum(total_occupied_beddays / sum(all_staffed_beddays))*100)%>%  
+  ggplot()+
+  geom_line(aes(x = quart, y = avg_occupancy, colour = population_catchment))+
+  labs(title = "Avg. Beds Available by Population Status",
+       x = "Date",
+       y = "Percentage Occupancy")+
+  scale_colour_manual(values = c("low population" = "darkblue",
+                      "high population" = "lightblue"))+
+theme(panel.background = element_blank())
+
+
+```
+
+## time series of avg occupancy by location 
+```{r}
 beds_available %>% 
   group_by(hb_name) %>% 
   summarise(avg_occupancy = mean(percentage_occupancy)) %>% 
@@ -54,6 +77,8 @@ beds_available %>%
        x = "Date",
        y = "Percentage Occupancy")
 ```
+
+
 ##show all locations as percentage
 ```{r}
 beds_available %>% 
