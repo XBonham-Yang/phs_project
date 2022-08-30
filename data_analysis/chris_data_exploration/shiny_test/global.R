@@ -22,6 +22,8 @@ health_board_map <- st_read(dsn = here("clean_data/"),
 
 demo_data <- read_csv(here("clean_data/demo_clean.csv"))
 
+waiting_times <- read_csv(here("clean_data/wait_times.csv"))
+
 # Input Choices -----------------------------------------------------------
 
 hb_choices <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 

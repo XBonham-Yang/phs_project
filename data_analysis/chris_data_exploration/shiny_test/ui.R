@@ -31,14 +31,18 @@ shinyUI(fluidPage(
            ),
     column(width = 6,
            plotOutput("hb_map")           
-           )
+           ),
+    
   ),
   
   fluidRow(
     
     column(width = 6,
            plotOutput("demo_plot", width = "600px", height = "400px")
-           )
+           ),
+    column(width = 6,
+           plotOutput("wait_times_plot")           
+    )
     
   )
 )

@@ -52,3 +52,30 @@ health_board_map %>%
            layer = "health_board_simple",
            driver = "ESRI Shapefile")
 
+
+# Waiting Times -----------------------------------------------------------
+
+waiting_times_raw <- read_csv("raw_data/non_covid/monthly_ae_waitingtimes_202206.csv")
+
+waiting_times_raw %>% 
+  clean_names() %>% 
+  mutate(date_ym = ym(month), .before = month,
+         year = year(date_ym)) %>% 
+  left_join(hb, c("hbt" = "hb")) %>% 
+  left_join(hospitals, c("treatment_location" = "location")) %>% 
+  rename(total_attendance = number_of_attendances_aggregate,
+         wait_lt_4hrs = number_meeting_target_aggregate,
+         wait_gt_8hrs = attendance_greater8hrs,
+         wait_gt_12hrs = attendance_greater12hrs,
+         health_board = hb_name,
+         hospital_id = treatment_location, 
+         hospital_name = location_name) %>% 
+  select(date_ym, year, health_board, hospital_id, hospital_name, department_type,
+         total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
+  mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
+  mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0))) %>% 
+  mutate(is_covid_year = case_when(
+    year <= 2019 ~ FALSE,
+    year >= 2020 ~ TRUE
+  )) %>% 
+  write_csv("clean_data/wait_times.csv")

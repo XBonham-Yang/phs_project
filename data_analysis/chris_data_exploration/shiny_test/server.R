@@ -23,6 +23,10 @@ shinyServer(function(input, output) {
       filter(hb_name %in% input$health_board_input)
     })
     
+    wait_times <- reactive({
+      waiting_times %>% 
+        filter(hb_name %in% input$health_board_input)
+    })
     
     output$demo_plot <- renderPlot({
       
@@ -31,7 +35,7 @@ shinyServer(function(input, output) {
         summarise(total_episodes = sum(episodes))
       
       age_sex() %>%
-        # filter(hb_name %in% input$health_board_input) %>% 
+        filter(hb_name %in% input$health_board_input) %>% 
         group_by(is_covid_year, sex, age) %>% 
         summarise(sum_episodes = sum(episodes)) %>%
         left_join(total_pre_covid, by = "is_covid_year") %>% 
@@ -72,4 +76,37 @@ shinyServer(function(input, output) {
              title = "Change in demographic proportions: Pre-Covid vs Covid")
     })
 
+    output$wait_times_plot <- renderPlot({
+      
+      wait_times() %>% 
+        group_by(is_covid_year) %>% 
+        summarise(sum_attendance = sum(total_attendance), 
+                  wait_target = sum(wait_lt_4hrs)) %>% 
+        pivot_longer(wait_target, names_to = "wait_time", values_to = "value") %>% 
+        mutate(proportion = value / sum_attendance) %>%
+        mutate(ymin = rescale(0, to = pi*c(-.5,.5), from = 0:1), 
+               ymax = rescale(proportion, to = pi*c(-.5,.5), from = 0:1)) %>%
+        ggplot(aes(x0 = 0, y0 = 0, r0 = .5, r = 1)) + 
+        geom_arc_bar(aes(start = - pi / 2, end = pi / 2), fill = "grey80") +
+        geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax, fill = proportion)) +
+        coord_fixed() +
+        facet_wrap(~ is_covid_year) +
+        ylim(-0.3, 1) +
+        geom_text(aes(x = 0, y = 0.01, label = scales::percent(proportion, accuracy = 0.1)), size = 6.5) +
+        geom_text(aes(x = 0, y = -0.25), label = c("Pre-Covid", "During Covid"), family= "Poppins Light", size=4.2) +
+        theme_void() +
+        theme(strip.background = element_blank(),
+              strip.text = element_blank(),
+              legend.position = "none",
+              title = element_text(vjust = 1),
+              plot.margin = unit(c(0, 0, 0, 0), "cm")) +
+        labs(title = "   Percentage of admissions achieving target wait times (<4hrs)\n")
+      
+    })
+    
+    
+    
+    
+    
+    
 })
