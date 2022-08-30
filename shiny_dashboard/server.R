@@ -91,7 +91,7 @@ shinyServer(function(input, output) {
       geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax,
                        fill = proportion)) +
       coord_fixed() +
-      facet_wrap(~ is_covid_year) +
+      facet_wrap(~ is_covid_year, ncol = 1) +
       ylim(-0.3, 1) +
       geom_text(aes(x = 0, y = 0.01,
                     label = scales::percent(proportion, accuracy = 0.1)),
@@ -105,7 +105,7 @@ shinyServer(function(input, output) {
             legend.position = "none",
             title = element_text(face = "bold", size = 14),
             plot.margin = unit(c(0, 0, 0, 0), "cm")) +
-      labs(title = "   Percentage of admissions achieving target wait times (<4hrs)\n")
+      labs(title = "Percentage of A&E patients\nmeeting target wait time (<4hrs)")
     
   })
   
