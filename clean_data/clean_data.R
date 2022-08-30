@@ -67,10 +67,9 @@ waiting_times_raw %>%
          wait_lt_4hrs = number_meeting_target_aggregate,
          wait_gt_8hrs = attendance_greater8hrs,
          wait_gt_12hrs = attendance_greater12hrs,
-         health_board = hb_name,
          hospital_id = treatment_location, 
          hospital_name = location_name) %>% 
-  select(date_ym, year, health_board, hospital_id, hospital_name, department_type,
+  select(date_ym, year, hb_name, hospital_id, hospital_name, department_type,
          total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
   mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
   mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0))) %>% 

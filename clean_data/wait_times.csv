@@ -1,4 +1,4 @@
-date_ym,year,health_board,hospital_id,hospital_name,department_type,total_attendance,wait_lt_4hrs,wait_gt_4hrs,wait_gt_8hrs,wait_gt_12hrs,is_covid_year
+date_ym,year,hb_name,hospital_id,hospital_name,department_type,total_attendance,wait_lt_4hrs,wait_gt_4hrs,wait_gt_8hrs,wait_gt_12hrs,is_covid_year
 2007-07-01,2007,Ayrshire and Arran,A101H,Arran War Memorial Hospital,Minor Injury Unit or Other,252,252,0,0,0,FALSE
 2007-07-01,2007,Ayrshire and Arran,A111H,University Hospital Crosshouse,Emergency Department,5414,5290,124,26,24,FALSE
 2007-07-01,2007,Ayrshire and Arran,A207H,NA,Minor Injury Unit or Other,92,92,0,0,0,FALSE
