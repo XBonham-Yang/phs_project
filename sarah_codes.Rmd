@@ -1,0 +1,399 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(tsibble)
+library(here)
+library(reshape2)
+library(ggplot2)
+library(infer)
+library(scales)
+```
+
+```{r}
+covid_age_sex_hb <- read_csv(here("raw_data/covid_data/hospital_admissions_hb_agesex_20220302.csv"))
+covid_simd_hb <-read_csv("raw_data/covid_data/hospital_admissions_hb_simd_20220302.csv")
+covid_specialty_hb <- read_csv("raw_data/covid_data/hospital_admissions_hb_specialty_20220302.csv")
+hb <- read_csv("raw_data/general/hb14_hb19.csv") %>% janitor::clean_names()
+```
+
+------------   cleaning ---------
+I will clean 3 hb related data set and join them together at the end 
+
+
+```{r}
+covid_age_sex_short <- covid_age_sex_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, age_group, sex, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+  
+```
+
+
+```{r}
+covid_simd_short <- covid_simd_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, simd_quintile, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+```
+
+
+```{r}
+covid_specialty_short <- covid_specialty_hb %>% janitor::clean_names() %>% 
+  select(c(week_ending, hb, specialty, admission_type, number_admissions, average20182019, percent_variation)) %>% 
+  mutate(week_ending = as.Date(ymd(week_ending)))
+```
+
+```{r}
+covid_hb <- covid_age_sex_short %>% full_join(covid_simd_short)%>% full_join(covid_specialty_short)
+```
+
+
+emergency vs planned overall 
+very rough at the moment
+no filter or tidying, add filter later for things we want. 
+(eg age/sex it's mixed at the moment for the following two)
+```{r}
+covid_hb %>% 
+  filter(admission_type %in% c("Emergency","Planned")) %>% 
+  drop_na(number_admissions) %>% 
+  ggplot(aes(week_ending, number_admissions))+
+  geom_line(aes(col = admission_type), group = 1)+
+  facet_wrap( ~ admission_type, ncol = 1, scales = "free_y")+
+  labs(title = "draft- admission_type compare (numbers/counts)")
+```
+```{r}
+covid_hb %>% 
+  filter(admission_type %in% c("Emergency","Planned")) %>% 
+  drop_na(number_admissions) %>% 
+  ggplot(aes(week_ending, number_admissions))+
+  geom_col(aes(fill = admission_type), position = "fill")+
+  labs(title = "draft- admission_type compare (proportion)",
+       subtitle = "...very ewww, I don't like this graph")
+```
+
+-----emergency---
+tidyed a bit (all group by week, mean of all hb)
+```{r}
+covid_emergency <- covid_hb %>% 
+  group_by(week_ending) %>% 
+  filter(admission_type == "Emergency",
+         age_group == "All ages",
+         sex == "All",
+         specialty == "All") %>% 
+  summarise(mean_this_week = mean(number_admissions),
+            mean_1819 = mean(average20182019),
+            var = mean(percent_variation))
+```
+
+
+
+
+```{r}
+
+
+
+data_mod_emergency <- melt(covid_emergency,
+                  measure.vars=c('mean_this_week', 'mean_1819'))
+  
+
+ggplot(data_mod_emergency) +
+geom_boxplot(aes(y=value, color=variable))+
+  labs(title = "emergency admission all age, all sex, all specialty, mean of all hb")
+```
+
+
+ 
+
+ 
+```{r}
+covid_emergency %>% 
+  ggplot(aes(week_ending, var)) +
+    geom_col(fill = case_when(covid_emergency$var >= 0 ~"red",
+                              TRUE ~ "seagreen"))+
+  labs(title = "draft-emergency percent variation comparing with 2018/2019 ",
+       subtitle = "strange",
+       fill = "fix it later")
+```
+
+-------planned -------
+repeated as emergency 
+```{r}
+covid_planned <- covid_hb %>% 
+  group_by(week_ending) %>% 
+  filter(admission_type == "Planned",
+         age_group == "All ages",
+         sex == "All",
+         specialty == "All") %>% 
+  summarise(mean_this_week = mean(number_admissions),
+            mean_1819 = mean(average20182019),
+            var = mean(percent_variation))
+```
+ 
+```{r}
+data_mod_planned <- melt(covid_planned,
+                  measure.vars=c('mean_this_week', 'mean_1819'))
+  
+
+ggplot(data_mod_planned) +
+geom_boxplot(aes(y=value, color=variable))+
+  labs(title = "plannedadmission all age, all sex, all specialty, mean of all hb",
+       subtitle = "why why why ")
+```
+
+```{r}
+covid_planned %>% 
+  ggplot(aes(week_ending, var)) +
+    geom_col(fill = case_when(covid_planned$var >= 0 ~"red",
+                              TRUE ~ "seagreen"))+
+  labs(title = "draft-planned percent variation comparing with 2018/2019 ",
+       subtitle = "why! i don' understand, i must have done something wrong",
+       fill = "fix it later")
+```
+ 
+ 
+ ----I will add few more cols for analysis later -----
+ 
+```{r}
+covid_full <- hb %>% janitor::clean_names() %>% 
+  select(1,2) %>% 
+right_join(covid_hb,by = "hb") 
+
+covid_full <- covid_full %>% mutate(
+  year = year(week_ending),
+  month = month(week_ending,label = TRUE),
+  .after = week_ending
+) 
+
+
+covid_full %>% head()
+```
+ 
+ 
+ 
+-----gender------
+
+looking into time this time 
+`specialty is NA ?????? `
+```{r}
+covid_sex <- covid_full %>% 
+  filter(admission_type == "All",
+         age_group == "All ages",
+         sex != "All") %>% 
+  group_by(sex,week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+covid_sex
+```
+
+
+```{r}
+covid_sex %>% ggplot(aes(week_ending, total_admissions))+
+  geom_line(aes(col = sex))+
+  labs(title = "Female/male over time ")
+```
+```{r}
+ covid_full %>% 
+  filter(admission_type == "All",
+         age_group == "All ages",
+         sex != "All") %>% 
+  group_by(sex,month) %>% 
+  summarise(total_admissions = sum(number_admissions))%>% 
+  ggplot(aes(month, total_admissions))+
+  geom_line(aes(col = sex, group = sex))+
+  geom_point(aes(col = sex))+
+  labs(title = "Female/male over time (month)")
+```
+ 
+ 
+ 
+ 
+```{r}
+covid_simd<- covid_full %>% 
+  drop_na(simd_quintile) %>% 
+  group_by(simd_quintile,week_ending) %>% 
+  summarise(total_admissions = sum(number_admissions))
+
+covid_simd
+```
+```{r}
+covid_simd %>% ggplot(aes(week_ending, total_admissions))+
+  geom_line(aes(col = as.factor(simd_quintile)))+
+  labs(title = "simd over time")
+```
+
+```{r}
+covid_simd %>% ggplot(aes(simd_quintile, total_admissions))+
+  geom_col(aes(fill = as.factor(simd_quintile)))+
+  labs(title = "simd compare to each other")
+```
+ sex-test --------
+ female = male
+ female > male 
+ alpha = 0.05
+```{r}
+covid_sex %>% 
+  ggplot(aes(sex, total_admissions)) + 
+  geom_boxplot(aes(col = sex))+
+  labs(title= "female, male title admissions")
+```
+```{r}
+
+null_distribution <- covid_sex %>% 
+  specify(total_admissions ~ sex) %>% 
+  hypothesize(null = "independence") %>% 
+  generate(reps = 1000, type = "permute") %>% 
+  calculate(stat = "diff in means", order = c("Female", "Male")) 
+
+
+observed_stat <- covid_sex %>% 
+  specify(total_admissions ~ sex) %>%
+  calculate(stat = "diff in means", order = c("Female", "Male"))
+  
+observed_stat
+
+
+null_distribution %>%
+  visualise() +
+  shade_p_value(obs_stat = observed_stat, direction = "right")
+
+p_value <- null_distribution %>%
+  get_p_value(obs_stat = observed_stat, direction = "right")
+
+p_value
+```
+ 
+
+```{r}
+
+specialties_raw <- read_csv("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv") %>%
+ janitor:: clean_names()
+
+
+```
+
+```{r}
+
+specialties <- specialties_raw %>% 
+  inner_join(hb, "hb") %>% 
+  select(-ends_with("qf"), -hb, - specialty) %>% 
+  select(quarter, hb_name, everything()) %>% 
+  mutate(year = as.numeric(str_sub(quarter,1, 4)), .before = quarter) %>% 
+  mutate(is_covid_year = case_when(
+    year >= 2020 ~ TRUE,
+    year < 2020 ~ FALSE
+  ))
+
+specialties
+
+```
+
+```{r}
+
+total_admissions <- specialties %>% 
+  filter(hb_name %in% c(	"NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
+  group_by(is_covid_year) %>% 
+  filter(admission_type == "All Inpatients and Day cases") %>% 
+  summarise(total_admissions = sum(episodes)) %>% 
+  pull(total_admissions)
+
+
+change_in_specialties <- specialties %>% 
+  filter(hb_name %in% c("NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
+  group_by(specialty_name, is_covid_year) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+  rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+  mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
+         covid_year_prop = covid_year / total_admissions[2],
+         percentage_change = covid_year_prop - pre_covid_year_prop) %>% 
+
+ 
+
+change_in_specialties %>% 
+  arrange(desc(percentage_change)) %>% 
+  head(5) %>% 
+  filter(percentage_change > 0) %>% 
+  ggplot(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+             y = percentage_change)) +
+  geom_col(aes(fill = specialty_name)) +
+  theme_classic() +
+  scale_y_continuous(labels = percent_format())+
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+  labs(y = "Percentage Increase (%)",
+       title = "Increase in hospital admissions (by specialty) - pre-Covid vs Covid",
+       subtitle = "More than 1,000 admissions")
+
+```
+```{r}
+change_in_specialties %>% 
+  arrange(desc(abs(percentage_change)))%>% 
+  head(5) %>% 
+  ggplot(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+             y = percentage_change)) +
+  geom_col(aes(fill = percentage_change >= 0 )) +
+  theme_classic() +
+  scale_y_continuous(labels = percent_format())+
+  scale_fill_manual(values = c("FALSE" = "seagreen", "TRUE"= "red"))+
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+  labs(y = "Percentage Increase (%)",
+       title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
+       subtitle = "+tive and -tive changes")
+```
+
+
+
+maybe useful 
+
+library(reshape2)
+before_after_covid <- specialties %>% 
+    filter(hb_name == "NHS Ayrshire and Arran") %>% #for input 
+  group_by(specialty_name, is_covid_year,hb_name) %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+  rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+  mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
+         covid_year_prop = covid_year / total_admissions[2],
+         percentage_change = ((covid_year_prop / pre_covid_year_prop) - 1) * 100) %>% 
+  select(specialty_name,hb_name,pre_covid_year_prop,covid_year_prop,
+percentage_change
+)
+  
+
+data_mod_before_after_covid <- melt(before_after_covid,
+                  measure.vars=c('pre_covid_year_prop', 'covid_year_prop')) %>% 
+  arrange(desc(percentage_change)) %>% 
+  filter(percentage_change > 0) %>% 
+  head(10)
+  
+  
+
+ggplot(data_mod_before_after_covid) +
+geom_col(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+             y=value, color=variable, fill = variable), position = "dodge")+
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+  scale_fill_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "red"))+
+  scale_colour_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "red"))+
+  labs(y = "Percentage (%)",
+       title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
+       subtitle = "y is the percentage but x is ordered by percentage changes")
+  
+  
+
+
+
+
+
+
+
+ 
