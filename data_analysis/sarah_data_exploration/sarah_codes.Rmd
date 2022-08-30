@@ -21,9 +21,9 @@ library(scales)
 
 ```{r}
 covid_age_sex_hb <- read_csv(here("raw_data/covid_data/hospital_admissions_hb_agesex_20220302.csv"))
-covid_simd_hb <-read_csv("raw_data/covid_data/hospital_admissions_hb_simd_20220302.csv")
-covid_specialty_hb <- read_csv("raw_data/covid_data/hospital_admissions_hb_specialty_20220302.csv")
-hb <- read_csv("raw_data/general/hb14_hb19.csv") %>% janitor::clean_names()
+covid_simd_hb <-read_csv(here("raw_data/covid_data/hospital_admissions_hb_simd_20220302.csv"))
+covid_specialty_hb <- read_csv(here("raw_data/covid_data/hospital_admissions_hb_specialty_20220302.csv"))
+hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% janitor::clean_names()
 ```
 
 ------------   cleaning ---------
