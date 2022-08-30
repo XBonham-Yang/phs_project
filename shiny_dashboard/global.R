@@ -7,6 +7,7 @@ library(plotly)
 
 
 
+
 pal <- c(rgb(199, 175, 117, maxColorValue = 255),
          rgb(124, 36, 24, maxColorValue = 255), 
          rgb(210, 221, 213, maxColorValue = 255), 
@@ -23,5 +24,7 @@ health_board_map <- st_read(dsn = here("raw_data/shape_files/"),
   clean_names() %>% 
   st_simplify(dTolerance = 1000) %>% 
   st_cast("MULTIPOLYGON")
+
+beds_available <- read_csv(here("clean_data/beds_available.csv"))
 
   
