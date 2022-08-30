@@ -1,0 +1,42 @@
+PHS colours :
+[(199, 175, 117),
+(124, 36, 24), (210, 221, 213), (168, 106, 57), (222, 224, 227),
+(186, 158, 53), (6, 57, 83), (109, 67, 85)]
+
+
+----original data set
+covid_age_sex_hb
+covid_simd_hb
+covid_specialty_hb
+----- original data set
+
+---original data set no QF data, week_ending as date
+covid_age_sex_short
+covid_specialty_short
+coovid_simd_short
+---original data set no QF data, week_ending as date
+
+----three data set joined together
+covid_hb
+----three data set joined together
+
+
+----based on covid_hb (filter: all age, all sex, all specialty.
+admission type: is emergency for covid_emergency,  is planned for covid_planned
+mean admission: is the mean of all health boards)
+covid_emergency
+covid_planned
+----based on covid_hb (filter: all age, all sex, all specialty.
+admission type: is emergency for covid_emergency,  is planned for covid_planned
+mean admission: is the mean of all health boards)
+
+----not important, to help me draw graph, can ignore
+data_mod_emergency
+data_mod_planned
+----not important, to help me draw graph, can ignore 
+
+
+----covid_hb with year, month, and hb names
+covid_full 
+----covid_hb with year, month, and hb names
+
