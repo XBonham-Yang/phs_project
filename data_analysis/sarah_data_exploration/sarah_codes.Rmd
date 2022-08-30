@@ -273,7 +273,7 @@ p_value
 
 ```{r}
 
-specialties_raw <- read_csv("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv") %>%
+specialties_raw <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv")) %>%
  janitor:: clean_names()
 
 
@@ -313,7 +313,7 @@ change_in_specialties <- specialties %>%
   rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
   mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
          covid_year_prop = covid_year / total_admissions[2],
-         percentage_change = covid_year_prop - pre_covid_year_prop) %>% 
+         percentage_change = covid_year_prop - pre_covid_year_prop)
 
  
 
