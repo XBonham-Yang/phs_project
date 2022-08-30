@@ -23,12 +23,19 @@ shinyUI(fluidPage(
     column(width = 3, offset = 0,
            checkboxGroupInput("health_board_input",
                        "Select the health board?",
-                       choices = hb_choices)
+                       choices = hb_choices,selected = "Lothian")
            ),
     column(width = 6,
            plotOutput("hb_map")           
-           )
+           ),
+    
+    column(width = 3,
+           plotOutput("spe_plot")
+    )
   )
+  
+
+  
 )
 )
 

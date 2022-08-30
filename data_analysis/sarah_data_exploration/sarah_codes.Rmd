@@ -291,28 +291,30 @@ specialties <- specialties_raw %>%
     year < 2020 ~ FALSE
   ))
 
-specialties
+specialties <- specialties %>% mutate(hb_name = str_sub(hb_name, start = 5)) %>% 
+  select(is_covid_year,hb_name,admission_type,episodes, specialty_name)
 
+write_csv(specialties, here("clean_data/specialties.csv"))
 ```
 
 ```{r}
 
 total_admissions <- specialties %>% 
-  filter(hb_name %in% c(	"NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
+  #filter(hb_name %in% c(	"NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
   group_by(is_covid_year) %>% 
   filter(admission_type == "All Inpatients and Day cases") %>% 
-  summarise(total_admissions = sum(episodes)) %>% 
-  pull(total_admissions)
+  summarise(total_admissions = sum(episodes)) 
+  
 
 
 change_in_specialties <- specialties %>% 
-  filter(hb_name %in% c("NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
+ # filter(hb_name %in% c("NHS Ayrshire and Arran","NHS Dumfries and Galloway")) %>% 
   group_by(specialty_name, is_covid_year) %>% 
   summarise(total_episodes = sum(episodes)) %>% 
   pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
   rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
   mutate(pre_covid_year_prop = pre_covid_year / total_admissions[1],
-         covid_year_prop = covid_year / total_admissions[2],
+         covid_year_prop = covid_year /total_admissions[2],
          percentage_change = covid_year_prop - pre_covid_year_prop)
 
  
@@ -348,6 +350,9 @@ change_in_specialties %>%
   labs(y = "Percentage Increase (%)",
        title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
        subtitle = "+tive and -tive changes")
+
+write.csv(change_in_specialties, here("clean_data/specialties.csv"))
+
 ```
 
 

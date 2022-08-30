@@ -25,3 +25,4 @@ health_board_map <- st_read(dsn = here("raw_data/shape_files/"),
   st_cast("MULTIPOLYGON")
 
   
+specialties <- read_csv(here("clean_data/specialties.csv"))
