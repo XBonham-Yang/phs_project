@@ -56,8 +56,8 @@ shinyUI(fluidPage(
                   plotOutput("wait_times_plot")           
            ),
            
-           column(width = 8, 
-                  plotlyOutput("beds_vs_time"))
+           column(width = 6, 
+                  plotlyOutput("animated_beds"))
            
     ),
     
@@ -67,10 +67,7 @@ shinyUI(fluidPage(
   fluidRow(
     column(width = 5,
            plotOutput("spe_plot")),
-    
-    column(width = 6, 
-           plotlyOutput("animated_beds"))
-    
+  
   )
 )
 )
