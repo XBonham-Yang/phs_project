@@ -20,7 +20,12 @@ inpatient_and_daycase_by_nhs_board_of_treatment_age_and_sex <- read_csv("../../r
 inpatient_and_daycase_by_nhs_board_of_treatment_age_and_sex_non_covid <- read_csv("../../raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_age_and_sex.csv")
 inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid <- read_csv("../../raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd.csv")
 
+
+# Adding Health Board names
+## loading in the file containing healthboard names
 hb_list_simple <- read_csv("../../clean_data/hb_list_simple.csv")
+hb_list_simple <- read_csv("../../clean_data/hb_list_simple.csv")
+
 
 #view(hospital_admissions_by_hb_agesex_2022_03_02)
 #view(hospital_admissions_by_hb_simd_2022_03_02)
@@ -50,13 +55,10 @@ hospital_admissions_by_hb_agesex_2022_03_02_covid %>%
 ### Factoring the age_group column to a particular order and putting it in a column called age_group_fct
 ### ~ removing the following columns: hbqf, age_group_qf, sex_qf, admission_type_qf
 ```{r}
-# Adding Health Board names
-## loading in the file containing healthboard names
-hb_list_simple <- read_csv("../../clean_data/hb_list_simple.csv")
-
 #cleaning headings
 hospital_admissions_by_hb_agesex_2022_03_02_covid <- hospital_admissions_by_hb_agesex_2022_03_02_covid %>% clean_names()
 hospital_admissions_by_hb_simd_2022_03_02_covid <- hospital_admissions_by_hb_simd_2022_03_02_covid %>% clean_names()
+
 
 ## performing a join between dataset with info to be analysed and file with Health Board names
 hospital_admissions_by_hbnames_agesex_2022_03_02_covid <- left_join(hospital_admissions_by_hb_agesex_2022_03_02_covid, hb_list_simple, by= "hb")
@@ -90,7 +92,7 @@ hospital_admissions_by_hbname_simd_2022_03_02_covid_cleaned <- hospital_admissio
   mutate(month_of_admission = month(week_ending_amended, label = T), .before = hb) %>% 
   mutate(year_of_admission = year(week_ending_amended), .before = hb) %>% 
   mutate(month_year = make_datetime(year_of_admission, month_of_admission), .before = hb)# %>%
-#  mutate(age_group_fct = factor(age_group, levels = c("Under 5", "5 - 14", "15 - 44", "45 - 64", "65 - 74", "75 - 84", "85 and over", "All ages")), .after = age_group)
+  mutate(is_covid_year = factor(is_covid_year, levels = c("Covid", "Pre_Covid")))
 hospital_admissions_by_hbname_simd_2022_03_02_covid_cleaned
 
 ## performing a join between dataset with info to be analysed and file with Health Board names
@@ -107,8 +109,11 @@ inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned <- in
     mutate(quarter_year = as.Date(str_c(year, quarter_sub_test))) %>% 
     mutate(is_covid_year = case_when(year <= 2019 ~ "Pre_Covid", #
             quarter >= "2020Q2" ~ "Covid"), # set covid to be Q2 of 2020
-            is_covid_year = factor(is_covid_year, c("Pre_Covid", "Covid"))) %>%
+            is_covid_year = factor(is_covid_year, c("Covid", "Pre_Covid"))) %>%
     filter(!is.na(is_covid_year))
+
+inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned <- inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>% 
+  select(quarter, year, quarter_sub, hb, admission_type, simd, stays, hb_name, quarter_year, is_covid_year)
 
 view(inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned)
 write_csv(inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned, "../../clean_data/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_rr_cleaned.csv")
@@ -519,6 +524,27 @@ hospital_admissions_by_hb_agesex_2022_03_02_cleaned %>%
   xlab("tbc")+
   ylab("tbc")+
   ggtitle("Covid admissions by health board")
+  
+inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned <- inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>%   
+  mutate(is_covid_year = factor(is_covid_year, levels = c("Pre_Covid", "Covid")))
 
-  total_adm_simd_covid_hb
+ inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>%
+      select(quarter_year, year, hb_name, simd, admission_type, stays, is_covid_year) %>%
+      filter(!is.na(hb_name)) %>% 
+      filter(!is.na(simd)) %>%
+#      filter(hb_name %in% input$health_board_input)
+      group_by(is_covid_year, simd) %>%
+      summarise(total_stays = sum(stays)) %>% 
+      ggplot()+
+      aes(x = is_covid_year, y = total_stays, fill = simd)+
+      geom_col(stat="idendity", position = "fill")+
+      theme_classic() +
+      theme(axis.title.x = element_blank(),
+            axis.text.x = element_text(angle = 45, hjust = 1)) +
+      ylab("Sum of hospital stays")+
+      ggtitle("Total hospital stays by SIMD data")+
+      geom_text(aes(label = total_stays), position = position_fill(vjust=0.5), colour = "white")+
+      scale_y_continuous(label = scales::percent)
+
+write_csv(inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned, "../../clean_data/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_rr_cleaned.csv")
 ```

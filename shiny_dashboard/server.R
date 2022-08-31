@@ -274,7 +274,8 @@ shinyServer(function(input, output) {
     })
     
     output$simd_total_stays <- renderPlot({
-        simd() %>% 
+        simd() %>%
+        mutate(is_covid_year = factor(is_covid_year, levels = c("Pre_Covid", "Covid"))) %>% 
         select(quarter_year, year, hb_name, simd, admission_type, stays, is_covid_year) %>%
         filter(!is.na(simd)) %>%
         group_by(is_covid_year, simd) %>%
