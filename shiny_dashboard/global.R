@@ -11,6 +11,7 @@ library(reshape2)
 library(infer)
 library(scales)
 library(tsibble)
+library(gganimate)
 
 # Read in data ------------------------------------------------------------
 
@@ -27,6 +28,8 @@ beds_available <- tsibble(beds_available, index = "wheny", key = c(hb, month, al
   mutate(hb_name = str_remove(hb_name, "NHS"))
 
 specialties <- read_csv(here("clean_data/specialties.csv"))
+
+animated_data <- read_csv(here("clean_data/animated_data.csv"))
 
 # Input Choices -----------------------------------------------------------
 

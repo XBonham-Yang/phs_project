@@ -1,0 +1,29 @@
+group,values,frame
+Ayrshire and Arran,90.2240555372857,pre_covid
+Borders,84.29500024387583,pre_covid
+Dumfries and Galloway,77.06666825842244,pre_covid
+Fife,82.30210051634148,pre_covid
+Forth Valley,82.10693619530592,pre_covid
+Grampian,81.38268266978098,pre_covid
+Greater Glasgow and Clyde,85.50942535965356,pre_covid
+Highland,82.47931841422283,pre_covid
+Lanarkshire,83.4140172010229,pre_covid
+Lothian,87.16319742414619,pre_covid
+Orkney,81.80291692855405,pre_covid
+Shetland,55.360761052235944,pre_covid
+Tayside,73.91201439165465,pre_covid
+Western Isles,71.4338817740094,pre_covid
+Ayrshire and Arran,85.14747293472234,post_covid
+Borders,75.53412372598218,post_covid
+Dumfries and Galloway,71.61805697114774,post_covid
+Fife,69.11213149703568,post_covid
+Forth Valley,68.87593654181589,post_covid
+Grampian,78.57439233507885,post_covid
+Greater Glasgow and Clyde,81.33685791589662,post_covid
+Highland,78.44779507551817,post_covid
+Lanarkshire,74.48687010976674,post_covid
+Lothian,76.10991770776432,post_covid
+Orkney,63.35353703665132,post_covid
+Shetland,37.497586406642206,post_covid
+Tayside,68.72947360081737,post_covid
+Western Isles,54.81152042100447,post_covid

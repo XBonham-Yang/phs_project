@@ -156,21 +156,22 @@ shinyServer(function(input, output) {
     })
       
 
-    output$beds_vs_time <- renderPlotly({
+    output$animated_beds <- renderPlotly({
       
-      tsibble(beds_available, index = "wheny", key = c(hb, month, all_staffed_beddays, total_occupied_beddays, year, population_catchment, specialty_name, hb_name))%>% 
-        mutate(hb_name = str_remove(hb_name, "NHS"))%>% 
-        group_by(hb_name) %>% 
-        summarise(avg_occupancy = sum(total_occupied_beddays / sum(all_staffed_beddays))*100)%>%  
-        ungroup() %>% 
-        filter(hb_name %in% input$health_board_input) %>%
-        ggplot(aes(x = wheny, y = avg_occupancy, colour = hb_name))+
-        geom_line()+
-        labs(title = "Avg. Beds Available by Population Status",
-             x = "Date",
-             y = "Percentage Occupancy")+
-        theme(panel.background = element_blank())
-
-    })
+      animated_data %>% 
+        group_by(frame) %>% 
+        filter(group == input$health_board_input) %>% 
+        ggplot(aes(x = group, y = values, fill = frame))+
+        geom_bar(stat = "identity", position = "dodge")+
+        theme(panel.background = element_blank(),
+              legend.title = element_blank())+
+        labs(x = "Health Board",
+             y = "Perecntage Occupancy")+
+        coord_flip()+
+        labs(title = "Pre vs Post-Covid Occupancy",
+             x = "Health Board",
+             y = "Avg. Occupancy")+
+        scale_fill_manual(values = pal)
+})
 
 })
