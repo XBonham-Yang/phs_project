@@ -8,7 +8,7 @@ library(janitor)
 
 # Input Choices -----------------------------------------------------------
 
-hb_choices <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
+hb_choices <- read_csv(here("Documents/Codeclan/phs_project/raw_data/general/hb14_hb19.csv")) %>% 
   clean_names() %>% 
   distinct(hb_name) %>% 
   mutate(hb_name = str_remove(hb_name, "NHS ")) %>% 
