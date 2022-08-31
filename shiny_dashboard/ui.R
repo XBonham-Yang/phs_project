@@ -2,33 +2,69 @@
 # Libraries ---------------------------------------------------------------
 
 library(shiny)
-library(here)
-library(tidyverse)
-library(janitor)
+library(shinyWidgets)
 
-# Input Choices -----------------------------------------------------------
 
-hb_choices <- read_csv(here("Documents/Codeclan/phs_project/raw_data/general/hb14_hb19.csv")) %>% 
-  clean_names() %>% 
-  distinct(hb_name) %>% 
-  mutate(hb_name = str_remove(hb_name, "NHS ")) %>% 
-  arrange(hb_name) %>% 
-  pull()
-
-# Define UI for application that draws a histogram
 shinyUI(fluidPage(
+  titlePanel(
+    h2("How has covid affected Scotland's Hospitals?",
+             align = "left")),
   
   fluidRow(
     
-    column(width = 3, offset = 0,
-           checkboxGroupInput("health_board_input",
-                       "Select the health board?",
-                       choices = hb_choices)
+    column(width = 2, offset = 0,
+           style = "border: 4px double blue;",
+           pickerInput("health_board_input",
+                       "Select Health Board(s)",
+                       choices = hb_choices,
+                       selected = hb_choices,
+                       options = list(`actions-box` = TRUE),
+                       multiple = T),
+           plotOutput("hb_map", height = "382px")
            ),
-    column(width = 6,
-           plotOutput("hb_map")           
+    
+    column(width = 10,
+           h3("Trends in hospital admissions"),
+           style = "border: 4px double blue;",
+           column(width = 8,
+                  plotOutput("attendance_plot")
+           ),
+           column(width = 4,
+                  plotlyOutput("spe_plot")
            )
+    )
+  ),
+  
+  fluidRow(
+    
+    column(width = 6, offset = 0,
+           h3("Change in Patient Demographics: Pre-Covid vs During Covid"),
+           style = "border: 4px double blue;",
+           
+           column(width = 6,
+                  plotOutput("demo_plot") #, width = "600px", height = "400px")
+           ),
+           column(width = 6,
+           "Insert SIMD graph here"
+    ))
+    ,
+    column(width = 6, offset = 0,
+           h3("Hospital Performance Metrics (KPIs)"),
+           style = "border: 4px double blue;",
+           
+           column(width = 4,
+                  plotOutput("wait_times_plot")           
+           ),
+           
+           column(width = 8, 
+                  plotlyOutput("beds_vs_time"))
+           
+    ),
+    
+    
   )
 )
 )
+
+
 

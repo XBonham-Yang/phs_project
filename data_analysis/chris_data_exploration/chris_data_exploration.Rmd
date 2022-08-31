@@ -20,9 +20,7 @@ library(sf)
 waiting_times_raw <- read_csv(here("raw_data/non_covid/monthly_ae_waitingtimes_202206.csv")) %>% 
   clean_names()
 
-hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
-  clean_names() %>% 
-  select(hb, hb_name)
+hb <- read_csv(here("clean_data/hb_list_simple.csv"))
 
 hospitals <- read_csv(here("raw_data/general/current-hospital_flagged20211216.csv")) %>% 
   clean_names() %>% 
@@ -54,15 +52,15 @@ waiting_times <- waiting_times_raw %>%
          wait_lt_4hrs = number_meeting_target_aggregate,
          wait_gt_8hrs = attendance_greater8hrs,
          wait_gt_12hrs = attendance_greater12hrs,
-         health_board = hb_name,
          hospital_id = treatment_location, 
-         hospital_name = location_name) %>% 
-  select(date_ym, year, month, health_board, hospital_id, hospital_name, department_type,
+         hospital_name = location_name) %>%
+  select(date_ym, year, month, hb_name, hospital_id, hospital_name, department_type,
          total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
   mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
   mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0)))
 
-waiting_times
+waiting_times <- read_csv(here("clean_data/wait_times.csv")) %>% 
+  mutate(month = month(date_ym, label = TRUE, abbr = FALSE)) 
 ```
 
 ```{r}
@@ -88,7 +86,7 @@ waiting_times %>%
   group_by(year) %>% 
   summarise(total_attendance = sum(total_attendance)) %>% 
   ggplot(aes(x = year, y = total_attendance)) +
-  geom_col()
+  geom_line()
 
 # attendances - all data covid seasonal analysis
 waiting_times %>% 
@@ -114,6 +112,66 @@ waiting_times %>%
   geom_line()
 
 ```
+
+```{r}
+
+health_board_input <- c("Borders", "Lothian", "Ayrshire and Arran", "Dumfries and Galloway")
+
+# health_board_input <- hb$hb_name
+
+paste("Multiple HB:\n", paste(sort(health_board_input), collapse = ", "), sep = "\n")
+
+str_c("Multiple HBs:\n", str_c("Borders", "Lothian", "Dumfries", sep = ",\n"))
+
+# plot all data - attendances per year
+
+  
+  if(length(health_board_input) <= 3) {
+   
+    #first two rows will be from reactive function
+    p <- waiting_times %>% 
+      filter(hb_name %in% health_board_input) %>% 
+      group_by(date_ym, hb_name) %>% 
+      summarise(total_attendance = sum(total_attendance)) %>% 
+      ggplot(aes(x = date_ym, y = total_attendance, col = hb_name)) +
+      geom_line()
+
+  } else {
+    
+    if(length(health_board_input) == 14) {
+      hb_label <- "All Health Boards"
+    } else {
+      hb_label <- str_c("Total of Multiple HBs:\n",
+                        str_c(health_board_input, collapse = ",\n"))
+    }
+ 
+    p <- waiting_times %>% 
+      filter(hb_name %in% health_board_input) %>% 
+      mutate(hb_label = hb_label) %>% 
+      group_by(date_ym) %>% 
+      summarise(total_attendance = sum(total_attendance)) %>% 
+      ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label)) +
+      geom_line()
+    
+  }
+
+p  +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  scale_x_date(date_labels = "%Y",
+               date_breaks = "1 year") +
+  labs(title = "Total hospital attendances",
+       subtitle = "July 2007 to June 2022", 
+       col = "Health Board",
+       y = "Total attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text.align = 0)
+
+```
+
 
 # How do wait times change per year? (in terms of numbers)
 
@@ -1096,6 +1154,101 @@ beds %>%
          diff_occupied_pc = ((covid / pre_covid) - 1) * 100) %>% 
   filter(diff_occupied_pc > 0) %>% 
   arrange(desc(diff_occupied_pc))
+  
+
+```
+# waiting times
+## cleaning
+```{r}
+
+hb <- read_csv(here("clean_data/hb_list_simple.csv"))
+
+waiting_times <- waiting_times_raw %>% 
+  mutate(date_ym = ym(month), .before = month,
+         month = month(date_ym, label = TRUE, abbr = FALSE),
+         year = year(date_ym)) %>% 
+  left_join(hb, c("hbt" = "hb")) %>% 
+  left_join(hospitals, c("treatment_location" = "location")) %>% 
+  rename(total_attendance = number_of_attendances_aggregate,
+         wait_lt_4hrs = number_meeting_target_aggregate,
+         wait_gt_8hrs = attendance_greater8hrs,
+         wait_gt_12hrs = attendance_greater12hrs,
+         hospital_id = treatment_location, 
+         hospital_name = location_name) %>% 
+  select(date_ym, year, month, hb_name, hospital_id, hospital_name, department_type,
+         total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
+  mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
+  mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0)))
+
+```
+
+## analysis
+```{r}
+
+waiting_times %>% 
+  mutate(is_covid_year = case_when(
+    year <= 2019 ~ FALSE,
+    year >= 2020 ~ TRUE
+  )) %>% 
+  group_by(is_covid_year) %>% 
+  summarise(sum_attendance = sum(total_attendance), 
+            wait_target = sum(wait_lt_4hrs)) %>% 
+  pivot_longer(wait_target, names_to = "wait_time", values_to = "value") %>% 
+  mutate(proportion = value / sum_attendance) %>% 
+  ggplot(aes(ymax = proportion, ymin = 0, xmax = 2, xmin = 1, fill = proportion)) +
+  geom_rect(aes(ymax = 1, ymin = 0, xmax = 2, xmin = 1), fill = "grey80") +
+  geom_rect() + 
+  coord_polar(theta = "y",start=-pi/2) + xlim(c(0, 2)) + ylim(c(0,2)) +
+  geom_text(aes(x = 0, y = 0, label = scales::percent(proportion, accuracy = 0.1)), size = 6.5) +
+  geom_text(aes(x = 0.5, y = 1.5), label = c("Pre-Covid", "During Covid"), family="Poppins Light", size=4.2) + 
+  facet_wrap(~is_covid_year, nrow = 1) +
+  theme_void() +
+  # scale_fill_manual(values = c("red"="#C9146C", "orange"="#DA9112", "green"="#129188")) +
+  scale_colour_manual(values = c("red"="#C9146C", "orange"="#DA9112", "green"="#129188")) +
+  theme(strip.background = element_blank(),
+        strip.text.x = element_blank(),
+        legend.position = "none") +
+# ,
+#          +
+  labs(title = "   Percentage of admissions achieving target wait times (<4hrs)")
+
+
+```
+
+
+```{r}
+
+library(ggforce)
+library(scales)
+
+waiting_times %>% 
+  mutate(is_covid_year = case_when(
+    year <= 2019 ~ FALSE,
+    year >= 2020 ~ TRUE
+  )) %>% 
+  group_by(is_covid_year) %>% 
+  summarise(sum_attendance = sum(total_attendance), 
+            wait_target = sum(wait_lt_4hrs)) %>% 
+  pivot_longer(wait_target, names_to = "wait_time", values_to = "value") %>% 
+  mutate(proportion = value / sum_attendance) %>%
+  mutate(ymin = rescale(0, to = pi*c(-.5,.5), from = 0:1), 
+         ymax = rescale(proportion, to = pi*c(-.5,.5), from = 0:1)) %>%
+  ggplot(aes(x0 = 0, y0 = 0, r0 = .5, r = 1)) + 
+  geom_arc_bar(aes(start = - pi / 2, end = pi / 2), fill = "grey80") +
+  geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax, fill = proportion)) +
+  coord_fixed() +
+  facet_wrap(~ is_covid_year) +
+  ylim(-0.3, 1) +
+  geom_text(aes(x = 0, y = 0.01, label = scales::percent(proportion, accuracy = 0.1)), size = 6.5) +
+  geom_text(aes(x = 0, y = -0.25), label = c("Pre-Covid", "During Covid"), family= "Poppins Light", size=4.2) +
+  theme_void() +
+    theme(strip.background = element_blank(),
+          strip.text = element_blank(),
+        legend.position = "none",
+        title = element_text(vjust = 1),
+          plot.margin = unit(c(0, 0, 0, 0), "cm")) +
+  labs(title = "   Percentage of admissions achieving target wait times (<4hrs)\n")
+
   
 
 ```

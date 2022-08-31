@@ -147,7 +147,23 @@ health_board_map_simple %>%
 
 ```{r}
 
-"Hello"
+hb_simple <- st_read(dsn = here("clean_data/"),
+        layer = "health_board_simple")
+
+```
+
+```{r}
+
+hb_simple %>% 
+  ggplot() +
+  geom_sf()
+
+```
+
+```{r}
+
+health_board_map <- st_read(dsn = here("clean_data/"),
+                                       layer = "health_board_simple")
 
 ```
 

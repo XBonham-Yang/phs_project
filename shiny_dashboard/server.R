@@ -1,50 +1,238 @@
 
 library(shiny)
 
-# Define server logic required to draw a histogram
+
 shinyServer(function(input, output) {
+  
+  output$hb_map <- renderPlot({
+    
+    # ggplotly(
+    health_board_map %>%
+      ggplot() +
+      geom_sf(fill = pal[1], col = "gray40") +
+      geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
+              fill = pal[1]) +
+      theme_void()
+    # tooltip = "text")
+    
+  })
+  
+  age_sex <- reactive({
+    demo_data %>%
+      filter(hb_name %in% input$health_board_input)
+  })
+  
+  wait_times <- reactive({
+    waiting_times %>% 
+      filter(hb_name %in% input$health_board_input)
+  })
+  
+  output$demo_plot <- renderPlot({
+    
+    total_pre_covid <- age_sex() %>% 
+      group_by(is_covid_year) %>% 
+      summarise(total_episodes = sum(episodes))
+    
+    age_sex() %>%
+      filter(hb_name %in% input$health_board_input) %>% 
+      group_by(is_covid_year, sex, age) %>% 
+      summarise(sum_episodes = sum(episodes)) %>%
+      left_join(total_pre_covid, by = "is_covid_year") %>% 
+      mutate(sex = factor(sex, c("Male", "Female")),
+             prop_age_group = if_else(is_covid_year == "Pre_Covid", 
+                                      sum_episodes / total_episodes,
+                                      sum_episodes / total_episodes)) %>%  
+      select(-sum_episodes, -total_episodes) %>% 
+      pivot_wider(names_from = is_covid_year, values_from = prop_age_group) %>% 
+      mutate(diff = Covid - Pre_Covid,
+             is_positive = if_else(diff > 0, TRUE, FALSE)) %>% 
+      select(sex, age, diff, is_positive) %>% 
+      ggplot(aes(x = age, y = diff, fill = is_positive)) +
+      geom_col() +
+      geom_hline(yintercept = 0) +
+      geom_text(aes(label = scales::percent(diff, accuracy = 0.01),
+                    y = diff + 0.0015 * sign(diff)),
+                size = 4) +
+      scale_fill_manual(values = c("red", "seagreen")) +
+      facet_wrap(~ sex, ncol = 1) +
+      theme_classic() +
+      theme(legend.position = "none",
+            axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+            axis.title.x = element_blank(),
+            strip.background = element_rect(
+              color="white", fill = NA, size = 1.5, linetype = 0
+            ),
+            strip.text = element_text(face = "bold", size = 12),
+            strip.placement = "inside",
+            axis.line.x = element_blank(),
+            axis.ticks.x = element_blank(),
+            axis.line.y = element_blank(),
+            axis.text.y = element_blank(),
+            axis.ticks.y = element_blank(),
+            axis.title.y = element_blank(),
+            title = element_text(size = 14, face = "bold")) +
+      labs(y = "Change (%)",
+           title = "Changes in Age and Sex proportions")
+  })
+  
+  output$wait_times_plot <- renderPlot({
+    
+    wait_times() %>% 
+      group_by(is_covid_year) %>% 
+      summarise(sum_attendance = sum(total_attendance), 
+                wait_target = sum(wait_lt_4hrs)) %>% 
+      pivot_longer(wait_target, names_to = "wait_time", values_to = "value") %>% 
+      mutate(proportion = value / sum_attendance) %>%
+      mutate(ymin = rescale(0, to = pi*c(-.5,.5), from = 0:1), 
+             ymax = rescale(proportion, to = pi*c(-.5,.5), from = 0:1)) %>%
+      ggplot(aes(x0 = 0, y0 = 0, r0 = .5, r = 1)) + 
+      geom_arc_bar(aes(start = - pi / 2, end = pi / 2), fill = "grey80") +
+      geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax,
+                       fill = proportion)) +
+      coord_fixed() +
+      facet_wrap(~ is_covid_year, ncol = 1) +
+      ylim(-0.3, 1) +
+      geom_text(aes(x = 0, y = 0.01,
+                    label = scales::percent(proportion, accuracy = 0.1)),
+                size = 6.5) +
+      geom_text(aes(x = 0, y = -0.25),
+                label = c("Pre-Covid", "During Covid"),
+                size = 4.2) +
+      theme_void() +
+      theme(strip.background = element_blank(),
+            strip.text = element_blank(),
+            legend.position = "none",
+            title = element_text(face = "bold", size = 14),
+            plot.margin = unit(c(0, 0, 0, 0), "cm")) +
+      labs(title = "Proportion of A&E attendances\nmeeting target (<4hrs)")
+    
+  })
+  
+  total_admissions <- reactive({specialties %>% 
+    filter(hb_name %in% input$health_board_input) %>% 
+    group_by(is_covid_year) %>% 
+    filter(admission_type == "All Inpatients and Day cases") %>% 
+    summarise(total_admissions = sum(episodes)) %>% pull()})
+  
+  change_in_specialties <- reactive({specialties %>% 
+    filter(hb_name %in% input$health_board_input) %>% 
+    group_by(specialty_name, is_covid_year) %>% 
+    summarise(total_episodes = sum(episodes)) %>% 
+    pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
+    rename("covid_year" = "TRUE", "pre_covid_year" = "FALSE") %>% 
+    mutate(pre_covid_year_prop = pre_covid_year / total_admissions()[1],
+           covid_year_prop = covid_year /total_admissions()[2],
+           percentage_change = covid_year_prop - pre_covid_year_prop)%>% 
+      arrange(desc(percentage_change)) %>% head(5) %>% 
+      filter(percentage_change > 0)  
+  })
 
-    output$hb_map <- renderPlot({
-
-      # ggplotly(
-      health_board_map %>%
-        ggplot() +
-        geom_sf(fill = pal[5], col = "gray40") +
-        geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
-                fill = pal[7]) +
-        theme_void()
-      # tooltip = "text")
-
+   
+    
+    output$spe_plot <- renderPlotly({
+        ggplot(change_in_specialties())+
+          aes(x = specialty_name,
+                   y = percentage_change) +
+        geom_col(aes(fill = specialty_name)) +
+        theme_classic() +
+        scale_fill_manual(values = pal)+
+        scale_colour_manual(values = pal)+
+        scale_y_continuous(labels = percent_format())+
+        theme(legend.position = "none",
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+              axis.title.x = element_blank(),
+              strip.background = element_rect(
+                color="white", fill = NA, size = 1.5, linetype = 0
+              ),
+              strip.text = element_text(face = "bold", size = 12),
+              strip.placement = "inside",
+              axis.line.x = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.line.y = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.title.y = element_blank(),
+              title = element_text(size = 14, face = "bold"))+ 
+        labs(y = "Percentage Increase (%)",
+             title = "Increase in hospital admissions pre-Covid vs Covid",
+             subtitle = "- by specialty")
     })
-    output$hb_map <- renderPlot({
       
-      total_admission_by_hb_age_sex_2022_03_02_cleaned <- read_csv("../../data/olympics_overall_medals.csv")
-      total_adm_equal <- hospital_admissions_by_hb_agesex_2022_03_02_cleaned %>%
-        filter(admission_type == "All") %>% 
-        filter(age_group_fct != "All ages") %>% 
-        filter(sex == "All") %>%
-        filter(hb != "") %>% 
-        select(hb, month_year, month_of_admission, number_admissions, age_group_fct) %>% 
-        distinct() %>% 
-        group_by(month_year, age_group_fct) %>%
-        summarise(sum_admissions = sum(number_admissions)) %>% 
-        ggplot()+
-        aes(x = month_year, y = sum_admissions, group = age_group_fct, col = age_group_fct)+
+
+    output$beds_vs_time <- renderPlotly({
+      
+      tsibble(beds_available, index = "wheny", key = c(hb, month, all_staffed_beddays, total_occupied_beddays, year, population_catchment, specialty_name, hb_name))%>% 
+        mutate(hb_name = str_remove(hb_name, "NHS"))%>% 
+        group_by(hb_name) %>% 
+        summarise(avg_occupancy = sum(total_occupied_beddays / sum(all_staffed_beddays))*100)%>%  
+        ungroup() %>% 
+        filter(hb_name %in% input$health_board_input) %>%
+        ggplot(aes(x = wheny, y = avg_occupancy, colour = hb_name))+
         geom_line()+
-        xlab("tbc")+
-        ylab("tbc")+
-        ggtitle("Admissions by Age Group")
+        labs(title = "Avg. Beds Available by Population Status",
+             x = "Date",
+             y = "Percentage Occupancy")+
+        theme(panel.background = element_blank())
+
+    })
+
+    total_attendance <- reactive({
       
-      total_adm_equal
-      
-      # ggplotly(
-      health_board_map %>%
-        ggplot() +
-        geom_sf(fill = pal[5], col = "gray40") +
-        geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
-                fill = pal[7]) +
-        theme_void()
-      # tooltip = "text")
+      waiting_times %>% 
+        filter(hb_name %in% input$health_board_input)
       
     })
+    
+    hb_label <- reactive({
+      
+      if(length(input$health_board_input) == 14) {
+        hb_label <- "All Health Boards"
+      } else {
+        hb_label <- str_c("Total of Multiple HBs:\n",
+                          str_c(input$health_board_input, collapse = ",\n"))
+      }
+      
+    })
+    
+    output$attendance_plot <- renderPlot({
+      
+      if(length(input$health_board_input) <= 5) {
+
+        p <-  total_attendance() %>% 
+          group_by(date_ym, hb_name) %>% 
+          summarise(total_attendance = sum(total_attendance)) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, col = hb_name)) +
+          geom_line()
+        
+      } else {
+
+        p <- total_attendance() %>%  
+          mutate(hb_label = hb_label()) %>% 
+          group_by(date_ym) %>% 
+          summarise(total_attendance = sum(total_attendance)) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label())) +
+          geom_line()
+        
+      }
+      
+      p  + theme_classic() +
+        scale_y_continuous(labels = comma, 
+                           expand = c(0, 0),
+                           limits = c(0, NA)) +
+        scale_x_date(date_labels = "%Y",
+                     date_breaks = "1 year") +
+        labs(title = "Total hospital attendances: July 2007 to June 2022",
+             subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected", 
+             col = "Health Board",
+             y = "Total Hospital Admissions") +
+        theme(axis.title.x = element_blank(),
+              axis.text.x = element_text(angle = 45, hjust = 1),
+              legend.text.align = 0)
+      
+      
+      
+      
+    })
+    
+    
 })
