@@ -1,0 +1,86 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(tsibble)
+library(lubridate)
+library(sf)
+library(scales)
+
+```
+
+```{r}
+
+demo_clean <- read_csv("clean_data/demo_clean.csv")
+
+
+beds <- read_csv(here("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
+  clean_names() %>% 
+  select(-ends_with("qf")) %>% 
+  left_join(hb, "hb") %>% 
+  left_join(hospitals, "location") %>% 
+  select(quarter, hb, hb_name, location, location_name, specialty_name:percentage_occupancy) %>% 
+  mutate()
+
+simd_raw <- read_csv("clean_data/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_rr_cleaned.csv")
+
+
+specialties <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
+  clean_names() %>% 
+  inner_join(hb, "hb") %>% 
+  inner_join(hospitals, "location") %>% 
+  select(-ends_with("qf"), -hb, - specialty) %>% 
+  select(quarter, hb_name, location, location_name, everything()) %>% 
+  mutate(year = as.numeric(str_sub(quarter,1, 4)), .before = quarter) %>% 
+  mutate(is_covid_year = case_when(
+    year >= 2020 ~ TRUE,
+    year < 2020 ~ FALSE
+  ))
+
+```
+
+```{r}
+
+
+
+total_simd <- simd_raw %>% 
+  group_by(quarter) %>% 
+  summarise(total_simd = sum(episodes))
+
+combined_data <- total_as %>% 
+  left_join(total_simd, "quarter")
+
+combined_data %>% 
+  mutate(diff = ((total_simd / total_age_sex) - 1),
+         diff = scales::percent(diff))
+
+```
+
+```{r}
+
+demo_clean %>% 
+  group_by(quarter, hb_name) %>% 
+  summarise(total_age_sex = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = total_age_sex, colour = hb_name, group = hb_name)) +
+  geom_line() +
+  geom_point() +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  labs(title = "Nationwide Hospital Attendances",
+       subtitle = "July 2007 to June 2022", 
+       col = "Health Board",
+       y = "Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+```
+

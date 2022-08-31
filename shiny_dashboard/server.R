@@ -14,7 +14,7 @@ shinyServer(function(input, output) {
       theme_void()
     
     ggplotly(p,
-    tooltip = "text") %>% 
+    tooltip = "text") %>%
       config(scrollZoom = TRUE,
              displayModeBar = F,
              showAxisDragHandles = F)
@@ -184,7 +184,7 @@ shinyServer(function(input, output) {
 
     total_attendance <- reactive({
       
-      waiting_times %>% 
+      demo_data %>% 
         filter(hb_name %in% input$health_board_input)
       
     })
@@ -203,7 +203,9 @@ shinyServer(function(input, output) {
     hb_plotly_label <- reactive({
       
       if(length(input$health_board_input) <= 5) {
+        
         hb_plotly_label = input$health_board_input
+        
       } else{
         
         if(length(input$health_board_input) == 14) {
@@ -211,6 +213,7 @@ shinyServer(function(input, output) {
           hb_plotly_label <- "All Health Boards"
           
         } else {
+          
         hb_plotly_label <- str_c("Total of Multiple HBs:\n",
                           str_c(input$health_board_input, collapse = ",\n"))
       }
@@ -222,12 +225,11 @@ shinyServer(function(input, output) {
       if(length(input$health_board_input) <= 5) {
 
         p <-  total_attendance() %>% 
-          group_by(date_ym, hb_name) %>% 
-          summarise(total_attendance = sum(total_attendance)) %>% 
-          mutate(HB = paste(hb_name,"\nAttendance: ",
-                               comma(total_attendance), "\nDate: ",
-                               format(date_ym, "%h-%Y"))) %>% 
-          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_name, 
+          group_by(quarter, hb_name) %>% 
+          summarise(total_attendance = sum(episodes)) %>% 
+          mutate(HB = paste(hb_name,"\nAttendance: ", comma(total_attendance),
+                            "\nDate: ", quarter)) %>% 
+          ggplot(aes(x = quarter, y = total_attendance, colour = hb_name, 
                      label = HB)) +
           geom_line()
         
@@ -235,12 +237,11 @@ shinyServer(function(input, output) {
 
         p <- total_attendance() %>%  
           mutate(hb_label = hb_label()) %>% 
-          group_by(date_ym) %>% 
-          summarise(total_attendance = sum(total_attendance)) %>%
-          mutate(HB = paste(hb_label(),"\nAttendance: ",
-                               comma(total_attendance), "\nDate: ",
-                               format(date_ym, "%h-%Y"))) %>% 
-          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label(),
+          group_by(quarter) %>% 
+          summarise(total_attendance = sum(episodes)) %>%
+          mutate(HB = paste(hb_label(),"\nAttendance: ", comma(total_attendance),
+                            "\nDate: ", quarter)) %>% 
+          ggplot(aes(x = quarter, y = total_attendance, colour = hb_label(),
                      label = HB)) +
           geom_line()
         
@@ -250,8 +251,6 @@ shinyServer(function(input, output) {
         scale_y_continuous(labels = comma,
                            expand = c(0, 0),
                            limits = c(0, NA)) +
-        scale_x_date(date_labels = "%Y",
-                     date_breaks = "1 year") +
         labs(title = "Total hospital attendances: July 2007 to June 2022",
              subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected",
              col = "Health Board",

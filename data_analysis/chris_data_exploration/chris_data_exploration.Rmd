@@ -12,6 +12,7 @@ library(janitor)
 library(tsibble)
 library(lubridate)
 library(sf)
+library(scales)
 
 ```
 # Load in data sets
@@ -169,6 +170,32 @@ p  +
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.text.align = 0)
+
+```
+# Total Attendance Graph for presentation
+
+```{r}
+
+waiting_times %>% 
+      filter(hb_name %in% health_board_input) %>% 
+      mutate(hb_label = hb_label) %>% 
+      group_by(date_ym) %>% 
+      summarise(total_attendance = sum(total_attendance)) %>% 
+      ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label)) +
+      geom_line() +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  scale_x_date(date_labels = "%Y",
+               date_breaks = "1 year") +
+  labs(title = "Nationwide Hospital Attendances",
+       subtitle = "July 2007 to June 2022", 
+       col = "Health Board",
+       y = "Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
 
 ```
 
@@ -1329,6 +1356,18 @@ health_board_map %>%
       config(scrollZoom = TRUE,
              displayModeBar = F,
              showAxisDragHandles = F)
+
+```
+
+# Seasonal hospital attendances
+
+```{r}
+
+demo_clean <- read_csv(here("clean_data/demo_clean.csv"))
+
+demo_clean %>% 
+  
+
 
 ```
 
