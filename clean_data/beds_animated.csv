@@ -1,0 +1,29 @@
+hb_name,percentage_occupancy,frame
+Ayrshire and Arran,0.902240555372857,pre_covid
+Borders,0.8429500024387583,pre_covid
+Dumfries and Galloway,0.7706666825842243,pre_covid
+Fife,0.8230210051634148,pre_covid
+Forth Valley,0.8210693619530592,pre_covid
+Grampian,0.8138268266978098,pre_covid
+Greater Glasgow and Clyde,0.8550942535965357,pre_covid
+Highland,0.8247931841422284,pre_covid
+Lanarkshire,0.834140172010229,pre_covid
+Lothian,0.8716319742414619,pre_covid
+Orkney,0.8180291692855406,pre_covid
+Shetland,0.5536076105223594,pre_covid
+Tayside,0.7391201439165465,pre_covid
+Western Isles,0.714338817740094,pre_covid
+Ayrshire and Arran,0.8514747293472235,post_covid
+Borders,0.7553412372598218,post_covid
+Dumfries and Galloway,0.7161805697114774,post_covid
+Fife,0.6911213149703568,post_covid
+Forth Valley,0.6887593654181589,post_covid
+Grampian,0.7857439233507886,post_covid
+Greater Glasgow and Clyde,0.8133685791589661,post_covid
+Highland,0.7844779507551818,post_covid
+Lanarkshire,0.7448687010976675,post_covid
+Lothian,0.7610991770776433,post_covid
+Orkney,0.6335353703665132,post_covid
+Shetland,0.3749758640664221,post_covid
+Tayside,0.6872947360081737,post_covid
+Western Isles,0.5481152042100447,post_covid
