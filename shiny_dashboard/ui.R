@@ -7,31 +7,38 @@ library(shinyWidgets)
 
 shinyUI(fluidPage(
   titlePanel(
-    h1("How has covid affected Scotland's Hospitals?",
-             align = "center")),
+    h2("How has covid affected Scotland's Hospitals?",
+             align = "left")),
   
   fluidRow(
     
     column(width = 2, offset = 0,
-           #style = "border: 4px double blue;",
+           style = "border: 4px double blue;",
            pickerInput("health_board_input",
-                       "Select the health board?",
+                       "Select Health Board(s)",
                        choices = hb_choices,
                        selected = hb_choices,
                        options = list(`actions-box` = TRUE),
                        multiple = T),
-           plotOutput("hb_map") 
-
-           )
+           plotOutput("hb_map", height = "382px")
+           ),
     
-
-
+    column(width = 10,
+           h3("Trends in hospital admissions"),
+           style = "border: 4px double blue;",
+           column(width = 8,
+                  plotOutput("attendance_plot")
+           ),
+           column(width = 4,
+                  plotOutput("spe_plot")
+           )
+    )
   ),
   
   fluidRow(
     
     column(width = 6, offset = 0,
-           h2("Change in Patient Demographics"),
+           h3("Change in Patient Demographics: Pre-Covid vs During Covid"),
            style = "border: 4px double blue;",
            
            column(width = 6,
@@ -39,9 +46,10 @@ shinyUI(fluidPage(
            ),
            column(width = 6,
            "Insert SIMD graph here"
-    )),
+    ))
+    ,
     column(width = 6, offset = 0,
-           h2("Hospital Performance Metrics (KPIs)"),
+           h3("Hospital Performance Metrics (KPIs)"),
            style = "border: 4px double blue;",
            
            column(width = 4,
@@ -52,17 +60,9 @@ shinyUI(fluidPage(
                   plotlyOutput("beds_vs_time"))
            
     ),
-  
-
-    fluidRow(
-    column(width = 5,
-           plotOutput("spe_plot"))
-
+    
+    
   )
-  
-
-  
-)
 )
 )
 
