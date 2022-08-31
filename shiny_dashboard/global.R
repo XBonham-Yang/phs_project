@@ -25,6 +25,9 @@ beds_animated <- read_csv(here("clean_data/beds_animated.csv"))
 
 specialties <- read_csv(here("clean_data/specialties.csv"))
 
+hb_list_simple <- read_csv(here("clean_data/hb_list_simple.csv")) # wasn't sure that the hb_list_simple had been added
+inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned <- read_csv(here("clean_data/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_rr_cleaned.csv"))
+
 # Input Choices -----------------------------------------------------------
 
 hb_choices <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 

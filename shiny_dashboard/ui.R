@@ -20,14 +20,14 @@ shinyUI(fluidPage(
                        selected = hb_choices,
                        options = list(`actions-box` = TRUE),
                        multiple = T),
-           plotOutput("hb_map", height = "382px")
+           plotlyOutput("hb_map", height = "382px")
            ),
     
     column(width = 10,
            h3("Trends in hospital admissions"),
            style = "border: 4px double blue;",
            column(width = 8,
-                  plotOutput("attendance_plot")
+                  plotlyOutput("attendance_plot")
            ),
            column(width = 4,
                   plotlyOutput("spe_plot")
@@ -45,7 +45,9 @@ shinyUI(fluidPage(
                   plotOutput("demo_plot") #, width = "600px", height = "400px")
            ),
            column(width = 6,
-           "Insert SIMD graph here"
+                  h3("Total Hospital Stays by SIMD"),
+                  style = "border: 4px double blue;",
+                  plotOutput("simd_total_stays")
     ))
     ,
     column(width = 6, offset = 0,
