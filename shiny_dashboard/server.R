@@ -234,5 +234,28 @@ shinyServer(function(input, output) {
       
     })
     
+    simd <- reactive({
+      inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>% 
+          filter(hb_name %in% input$health_board_input)    
+    })
+    
+    output$simd_total_stays <- renderPlot({
+        simd() %>% 
+        select(quarter_year, year, hb_name, simd, admission_type, stays, is_covid_year) %>%
+        filter(!is.na(simd)) %>%
+        group_by(is_covid_year, simd) %>%
+        summarise(total_stays = sum(stays)) %>% 
+        ggplot()+
+        aes(x = is_covid_year, y = total_stays, fill = simd)+
+        geom_col(stat="idendity", position = "fill")+
+        theme_classic() +
+        theme(axis.title.x = element_blank(),
+              axis.text.x = element_text(angle = 45, hjust = 1)) +
+        ylab("Sum of hospital stays")+
+        ggtitle("Total hospital stays by SIMD data")+
+        geom_text(aes(label = total_stays), position = position_fill(vjust=0.5), colour = "white")+
+        scale_y_continuous(label = scales::percent)  
+    })
+    
     
 })

@@ -45,7 +45,9 @@ shinyUI(fluidPage(
                   plotOutput("demo_plot") #, width = "600px", height = "400px")
            ),
            column(width = 6,
-           "Insert SIMD graph here"
+                  h3("Total Hospital Stays by SIMD"),
+                  style = "border: 4px double blue;",
+                  plotOutput("simd_total_stays")
     ))
     ,
     column(width = 6, offset = 0,
