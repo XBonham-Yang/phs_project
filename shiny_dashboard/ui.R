@@ -30,7 +30,7 @@ shinyUI(fluidPage(
                   plotOutput("attendance_plot")
            ),
            column(width = 4,
-                  plotOutput("spe_plot")
+                  plotlyOutput("spe_plot")
            )
     )
   ),

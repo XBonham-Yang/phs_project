@@ -39,12 +39,11 @@ hb_choices <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>%
 
 # Colour Palette (not used) -----------------------------------------------
 
-pal <- c(rgb(199, 175, 117, maxColorValue = 255),
-         rgb(124, 36, 24, maxColorValue = 255), 
-         rgb(210, 221, 213, maxColorValue = 255), 
-         rgb(168, 106, 57, maxColorValue = 255), 
-         rgb(222, 224, 227, maxColorValue = 255),
-         rgb(186, 158, 53, maxColorValue = 255), 
-         rgb(6, 57, 83, maxColorValue = 255), 
-         rgb(109, 67, 85, maxColorValue = 255)
+pal <- c(
+         rgb(7, 143, 204, maxColorValue = 255),#good blue
+         rgb(147, 190, 32, maxColorValue = 255),#good green
+         rgb(146, 65, 143, maxColorValue = 255), # good purple 
+         rgb(111, 177, 210,maxColorValue = 255),#light blue
+         rgb(35, 112, 60,maxColorValue = 255), #dark green 
+         rgb(6, 57, 83, maxColorValue = 255) #blue dark 
 )
