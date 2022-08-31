@@ -143,7 +143,7 @@ shinyServer(function(input, output) {
         scale_colour_manual(values = pal)+
         scale_y_continuous(labels = percent_format())+
         labs(y = "Percentage Increase (%)",
-             title = "Increase in hospital admissions pre-Covid vs Covid \n(by specialty)") +
+             title = "Increase by specialty") +
         theme(legend.position = "none",
               axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
               axis.title.x = element_blank(),
