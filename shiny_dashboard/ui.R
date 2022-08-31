@@ -57,7 +57,7 @@ shinyUI(fluidPage(
            ),
            
            column(width = 8, 
-                  plotlyOutput("beds_vs_time"))
+                  plotlyOutput("animated_beds"))
            
     ),
     

@@ -21,10 +21,7 @@ demo_data <- read_csv(here("clean_data/demo_clean.csv"))
 
 waiting_times <- read_csv(here("clean_data/wait_times.csv"))
 
-beds_available <- read_csv(here("clean_data/beds_available.csv"))
-
-beds_available <- tsibble(beds_available, index = "wheny", key = c(hb, month, all_staffed_beddays, total_occupied_beddays, year, population_catchment, specialty_name, hb_name)) %>% 
-  mutate(hb_name = str_remove(hb_name, "NHS"))
+beds_animated <- read_csv(here("clean_data/beds_animated.csv"))
 
 specialties <- read_csv(here("clean_data/specialties.csv"))
 
