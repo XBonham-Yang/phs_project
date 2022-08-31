@@ -1253,3 +1253,82 @@ waiting_times %>%
 
 ```
 
+# Colour palette
+
+```{r}
+
+pal <- c(rgb(199, 175, 117, maxColorValue = 255),
+         rgb(124, 36, 24, maxColorValue = 255), 
+         rgb(210, 221, 213, maxColorValue = 255), 
+         rgb(168, 106, 57, maxColorValue = 255), 
+         rgb(222, 224, 227, maxColorValue = 255),
+         rgb(186, 158, 53, maxColorValue = 255), 
+         rgb(6, 57, 83, maxColorValue = 255), 
+         rgb(109, 67, 85, maxColorValue = 255)
+)
+
+show_col(pal)
+
+
+
+```
+
+# Rob's problem 
+
+```{r}
+
+
+
+ inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>%
+  select(quarter_year, year, hb_name, simd, admission_type, stays, is_covid_year) %>%
+  filter(stays >0) %>%
+  filter(hb_name != "") %>%
+  filter(!is.na(simd)) %>%
+  group_by(is_covid_year, stays, quarter_year, simd) %>%
+  summarise(total_stays = sum(stays)) %>%
+  distinct() %>%
+  ggplot()+
+  aes(x = quarter_year, y = total_stays, fill = simd)+
+  geom_col(position = "fill")
+
+```
+```{r}
+library(plotly)
+df <- read.csv("https://raw.githubusercontent.com/plotly/datasets/master/2011_us_ag_exports.csv")
+df$hover <- with(df, paste(state, '<br>', "Beef", beef, "Dairy", dairy, "<br>",
+                           "Fruits", total.fruits, "Veggies", total.veggies,
+                           "<br>", "Wheat", wheat, "Corn", corn))
+
+fig <- plot_geo(df, locationmode = 'USA-states')
+fig <- fig %>% add_trace(
+    z = ~total.exports, text = ~hover, locations = ~code,
+    color = ~total.exports, colors = 'Purples'
+  )
+fig <- fig %>% colorbar(title = "Millions USD")
+fig <- fig %>% layout(
+    title = '2011 US Agriculture Exports by State<br>(Hover for breakdown)'
+  )
+
+fig
+
+```
+
+```{r}
+
+health_board_map %>%
+  plot_geo(locationmode = "Scotland") %>% 
+  add_trace(text = ~hb_name)
+      ggplot(aes(text = hb_name)) +
+      geom_sf(fill = pal[5], col = "gray40", size = 0.1) +
+      geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
+              fill = pal[7], size = 0.1, colour = "white") +
+      theme_void()
+    
+    ggplotly(p,
+    tooltip = "text") %>% 
+      config(scrollZoom = TRUE,
+             displayModeBar = F,
+             showAxisDragHandles = F)
+
+```
+
