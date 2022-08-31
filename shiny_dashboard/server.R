@@ -21,12 +21,12 @@ shinyServer(function(input, output) {
     
 })
   
-  age_sex <- reactive({
+  age_sex <- eventReactive(input$update, {
     demo_data %>%
       filter(hb_name %in% input$health_board_input)
   })
   
-  wait_times <- reactive({
+  wait_times <- eventReactive(input$update, {
     waiting_times %>% 
       filter(hb_name %in% input$health_board_input)
   })
@@ -112,13 +112,13 @@ shinyServer(function(input, output) {
     
   })
   
-  total_admissions <- reactive({specialties %>% 
+  total_admissions <- eventReactive(input$update, {specialties %>% 
     filter(hb_name %in% input$health_board_input) %>% 
     group_by(is_covid_year) %>% 
     filter(admission_type == "All Inpatients and Day cases") %>% 
     summarise(total_admissions = sum(episodes)) %>% pull()})
   
-  change_in_specialties <- reactive({specialties %>% 
+  change_in_specialties <- eventReactive(input$update, {specialties %>% 
     filter(hb_name %in% input$health_board_input) %>% 
     group_by(specialty_name, is_covid_year) %>% 
     summarise(total_episodes = sum(episodes)) %>% 
@@ -131,8 +131,7 @@ shinyServer(function(input, output) {
       filter(percentage_change > 0)  
   })
 
-   
-    
+ 
     output$spe_plot <- renderPlotly({
         ggplot(change_in_specialties())+
           aes(x = specialty_name,
@@ -162,12 +161,18 @@ shinyServer(function(input, output) {
              subtitle = "- by specialty")
     })
       
-
+    beds <- eventReactive(input$update, {
+      
+      beds_animated %>% 
+        filter(hb_name %in% input$health_board_input)
+        
+    })
+    
+    
     output$animated_beds <- renderPlotly({
       
-      beds_animated %>%
+      beds() %>% 
         group_by(frame) %>%
-        filter(hb_name %in% input$health_board_input) %>%
         ggplot(aes(x = hb_name, y = percentage_occupancy, fill = frame))+
         geom_bar(stat = "identity", position = "dodge")+
         theme(panel.background = element_blank(),
@@ -182,14 +187,14 @@ shinyServer(function(input, output) {
 
     })
 
-    total_attendance <- reactive({
+    total_attendance <- eventReactive(input$update, {
       
       waiting_times %>% 
         filter(hb_name %in% input$health_board_input)
       
     })
     
-    hb_label <- reactive({
+    hb_label <- eventReactive(input$update, {
       
       if(length(input$health_board_input) == 14) {
         hb_label <- "All Health Boards"
@@ -200,7 +205,7 @@ shinyServer(function(input, output) {
       
     })
     
-    hb_plotly_label <- reactive({
+    hb_plotly_label <- eventReactive(input$update, {
       
       if(length(input$health_board_input) <= 5) {
         hb_plotly_label = input$health_board_input
@@ -268,7 +273,7 @@ shinyServer(function(input, output) {
 
     })
     
-    simd <- reactive({
+    simd <- eventReactive(input$update, {
       inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>% 
           filter(hb_name %in% input$health_board_input)    
     })
