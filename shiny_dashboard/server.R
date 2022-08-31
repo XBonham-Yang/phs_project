@@ -138,13 +138,15 @@ shinyServer(function(input, output) {
         scale_fill_manual(values = pal)+
         scale_colour_manual(values = pal)+
         scale_y_continuous(labels = percent_format())+
+        labs(y = "Percentage Increase (%)",
+             title = "Increase in hospital admissions pre-Covid vs Covid \n(by specialty)") +
         theme(legend.position = "none",
-              axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 10, face = "bold"),
               axis.title.x = element_blank(),
               strip.background = element_rect(
                 color="white", fill = NA, size = 1.5, linetype = 0
               ),
-              strip.text = element_text(face = "bold", size = 12),
+              strip.text = element_text(face = "bold", size = 10),
               strip.placement = "inside",
               axis.line.x = element_blank(),
               axis.ticks.x = element_blank(),
@@ -152,10 +154,7 @@ shinyServer(function(input, output) {
               axis.text.y = element_blank(),
               axis.ticks.y = element_blank(),
               axis.title.y = element_blank(),
-              title = element_text(size = 14, face = "bold"))+ 
-        labs(y = "Percentage Increase (%)",
-             title = "Increase in hospital admissions pre-Covid vs Covid",
-             subtitle = "- by specialty")
+              title = element_text(size = 12,face = "bold"))
     })
       
 
