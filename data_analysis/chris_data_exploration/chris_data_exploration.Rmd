@@ -20,9 +20,7 @@ library(sf)
 waiting_times_raw <- read_csv(here("raw_data/non_covid/monthly_ae_waitingtimes_202206.csv")) %>% 
   clean_names()
 
-hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% 
-  clean_names() %>% 
-  select(hb, hb_name)
+hb <- read_csv(here("clean_data/hb_list_simple.csv"))
 
 hospitals <- read_csv(here("raw_data/general/current-hospital_flagged20211216.csv")) %>% 
   clean_names() %>% 
@@ -46,6 +44,7 @@ represented by the "wait_lt_4hrs" column values.
 # cleaning script
 waiting_times <- waiting_times_raw %>% 
   mutate(date_ym = ym(month), .before = month,
+         month = month(date_ym, label = TRUE, abbr = FALSE),
          year = year(date_ym)) %>% 
   left_join(hb, c("hbt" = "hb")) %>% 
   left_join(hospitals, c("treatment_location" = "location")) %>% 
@@ -53,15 +52,15 @@ waiting_times <- waiting_times_raw %>%
          wait_lt_4hrs = number_meeting_target_aggregate,
          wait_gt_8hrs = attendance_greater8hrs,
          wait_gt_12hrs = attendance_greater12hrs,
-         health_board = hb_name,
          hospital_id = treatment_location, 
-         hospital_name = location_name) %>% 
-  select(date_ym, year, health_board, hospital_id, hospital_name, department_type,
+         hospital_name = location_name) %>%
+  select(date_ym, year, month, hb_name, hospital_id, hospital_name, department_type,
          total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
   mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
   mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0)))
 
-waiting_times
+waiting_times <- read_csv(here("clean_data/wait_times.csv")) %>% 
+  mutate(month = month(date_ym, label = TRUE, abbr = FALSE)) 
 ```
 
 ```{r}
@@ -87,7 +86,7 @@ waiting_times %>%
   group_by(year) %>% 
   summarise(total_attendance = sum(total_attendance)) %>% 
   ggplot(aes(x = year, y = total_attendance)) +
-  geom_col()
+  geom_line()
 
 # attendances - all data covid seasonal analysis
 waiting_times %>% 
@@ -113,6 +112,66 @@ waiting_times %>%
   geom_line()
 
 ```
+
+```{r}
+
+health_board_input <- c("Borders", "Lothian", "Ayrshire and Arran", "Dumfries and Galloway")
+
+# health_board_input <- hb$hb_name
+
+paste("Multiple HB:\n", paste(sort(health_board_input), collapse = ", "), sep = "\n")
+
+str_c("Multiple HBs:\n", str_c("Borders", "Lothian", "Dumfries", sep = ",\n"))
+
+# plot all data - attendances per year
+
+  
+  if(length(health_board_input) <= 3) {
+   
+    #first two rows will be from reactive function
+    p <- waiting_times %>% 
+      filter(hb_name %in% health_board_input) %>% 
+      group_by(date_ym, hb_name) %>% 
+      summarise(total_attendance = sum(total_attendance)) %>% 
+      ggplot(aes(x = date_ym, y = total_attendance, col = hb_name)) +
+      geom_line()
+
+  } else {
+    
+    if(length(health_board_input) == 14) {
+      hb_label <- "All Health Boards"
+    } else {
+      hb_label <- str_c("Total of Multiple HBs:\n",
+                        str_c(health_board_input, collapse = ",\n"))
+    }
+ 
+    p <- waiting_times %>% 
+      filter(hb_name %in% health_board_input) %>% 
+      mutate(hb_label = hb_label) %>% 
+      group_by(date_ym) %>% 
+      summarise(total_attendance = sum(total_attendance)) %>% 
+      ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label)) +
+      geom_line()
+    
+  }
+
+p  +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  scale_x_date(date_labels = "%Y",
+               date_breaks = "1 year") +
+  labs(title = "Total hospital attendances",
+       subtitle = "July 2007 to June 2022", 
+       col = "Health Board",
+       y = "Total attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.text.align = 0)
+
+```
+
 
 # How do wait times change per year? (in terms of numbers)
 

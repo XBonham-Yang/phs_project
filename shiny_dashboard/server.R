@@ -9,14 +9,13 @@ shinyServer(function(input, output) {
     # ggplotly(
     health_board_map %>%
       ggplot() +
-      geom_sf(fill = pal[5], col = "gray40") +
+      geom_sf(fill = pal[1], col = "gray40") +
       geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
-              fill = pal[7]) +
+              fill = pal[1]) +
       theme_void()
     # tooltip = "text")
     
   })
-  
   
   age_sex <- reactive({
     demo_data %>%
@@ -53,7 +52,7 @@ shinyServer(function(input, output) {
       geom_hline(yintercept = 0) +
       geom_text(aes(label = scales::percent(diff, accuracy = 0.01),
                     y = diff + 0.0015 * sign(diff)),
-                size = 5) +
+                size = 4) +
       scale_fill_manual(values = c("red", "seagreen")) +
       facet_wrap(~ sex, ncol = 1) +
       theme_classic() +
@@ -73,7 +72,7 @@ shinyServer(function(input, output) {
             axis.title.y = element_blank(),
             title = element_text(size = 14, face = "bold")) +
       labs(y = "Change (%)",
-           title = "Change in demographic proportions: Pre-Covid vs Covid")
+           title = "Changes in Age and Sex proportions")
   })
   
   output$wait_times_plot <- renderPlot({
@@ -91,7 +90,7 @@ shinyServer(function(input, output) {
       geom_arc_bar(aes(x0 = 0, y0 = 0, r0 = .5, r = 1, start = ymin, end = ymax,
                        fill = proportion)) +
       coord_fixed() +
-      facet_wrap(~ is_covid_year) +
+      facet_wrap(~ is_covid_year, ncol = 1) +
       ylim(-0.3, 1) +
       geom_text(aes(x = 0, y = 0.01,
                     label = scales::percent(proportion, accuracy = 0.1)),
@@ -105,7 +104,7 @@ shinyServer(function(input, output) {
             legend.position = "none",
             title = element_text(face = "bold", size = 14),
             plot.margin = unit(c(0, 0, 0, 0), "cm")) +
-      labs(title = "   Percentage of admissions achieving target wait times (<4hrs)\n")
+      labs(title = "Proportion of A&E attendances\nmeeting target (<4hrs)")
     
   })
   
@@ -128,31 +127,35 @@ shinyServer(function(input, output) {
       filter(percentage_change > 0)  
   })
 
-    output$hb_map <- renderPlot({
-
-      health_board_map %>%
-        ggplot() +
-        geom_sf(fill = pal[5], col = "gray40") +
-        geom_sf(data = health_board_map %>%
-                  filter(hb_name %in% input$health_board_input),
-                fill = pal[7]) +
-        theme_void()
    
-
-    })
     
-
-    output$spe_plot <- renderPlot({
+    output$spe_plot <- renderPlotly({
         ggplot(change_in_specialties())+
-          aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+          aes(x = specialty_name,
                    y = percentage_change) +
         geom_col(aes(fill = specialty_name)) +
         theme_classic() +
+        scale_fill_manual(values = pal)+
+        scale_colour_manual(values = pal)+
         scale_y_continuous(labels = percent_format())+
-        theme(axis.title.x = element_blank(),
-              axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+        theme(legend.position = "none",
+              axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+              axis.title.x = element_blank(),
+              strip.background = element_rect(
+                color="white", fill = NA, size = 1.5, linetype = 0
+              ),
+              strip.text = element_text(face = "bold", size = 12),
+              strip.placement = "inside",
+              axis.line.x = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.line.y = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.y = element_blank(),
+              axis.title.y = element_blank(),
+              title = element_text(size = 14, face = "bold"))+ 
         labs(y = "Percentage Increase (%)",
-             title = "Increase in hospital admissions (by specialty) - pre-Covid vs Covid")
+             title = "Increase in hospital admissions pre-Covid vs Covid",
+             subtitle = "- by specialty")
     })
       
 
@@ -172,6 +175,65 @@ shinyServer(function(input, output) {
              x = "Health Board",
              y = "Avg. Occupancy")+
         scale_fill_manual(values = pal)
-})
 
+    })
+
+    total_attendance <- reactive({
+      
+      waiting_times %>% 
+        filter(hb_name %in% input$health_board_input)
+      
+    })
+    
+    hb_label <- reactive({
+      
+      if(length(input$health_board_input) == 14) {
+        hb_label <- "All Health Boards"
+      } else {
+        hb_label <- str_c("Total of Multiple HBs:\n",
+                          str_c(input$health_board_input, collapse = ",\n"))
+      }
+      
+    })
+    
+    output$attendance_plot <- renderPlot({
+      
+      if(length(input$health_board_input) <= 5) {
+
+        p <-  total_attendance() %>% 
+          group_by(date_ym, hb_name) %>% 
+          summarise(total_attendance = sum(total_attendance)) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, col = hb_name)) +
+          geom_line()
+        
+      } else {
+
+        p <- total_attendance() %>%  
+          mutate(hb_label = hb_label()) %>% 
+          group_by(date_ym) %>% 
+          summarise(total_attendance = sum(total_attendance)) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label())) +
+          geom_line()
+        
+      }
+      
+      p  + theme_classic() +
+        scale_y_continuous(labels = comma, 
+                           expand = c(0, 0),
+                           limits = c(0, NA)) +
+        scale_x_date(date_labels = "%Y",
+                     date_breaks = "1 year") +
+        labs(title = "Total hospital attendances: July 2007 to June 2022",
+             subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected", 
+             col = "Health Board",
+             y = "Total Hospital Admissions") +
+        theme(axis.title.x = element_blank(),
+              axis.text.x = element_text(angle = 45, hjust = 1),
+              legend.text.align = 0)
+      
+      
+      
+      
+    })
+    
 })
