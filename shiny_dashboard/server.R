@@ -4,18 +4,22 @@ library(shiny)
 
 shinyServer(function(input, output) {
   
-  output$hb_map <- renderPlot({
-    
-    # ggplotly(
-    health_board_map %>%
-      ggplot() +
-      geom_sf(fill = pal[1], col = "gray40") +
+  output$hb_map <- renderPlotly({
+
+    p <- health_board_map %>%
+      ggplot(aes(text = hb_name)) +
+      geom_sf(fill = "gray90", col = "gray40", size = 0.1) +
       geom_sf(data = health_board_map %>% filter(hb_name %in% input$health_board_input),
-              fill = pal[1]) +
+              fill = pal[6], size = 0.1, colour = "white") +
       theme_void()
-    # tooltip = "text")
     
-  })
+    ggplotly(p,
+    tooltip = "text") %>% 
+      config(scrollZoom = TRUE,
+             displayModeBar = F,
+             showAxisDragHandles = F)
+    
+})
   
   age_sex <- reactive({
     demo_data %>%
@@ -194,14 +198,35 @@ shinyServer(function(input, output) {
       
     })
     
-    output$attendance_plot <- renderPlot({
+    hb_plotly_label <- reactive({
+      
+      if(length(input$health_board_input) <= 5) {
+        hb_plotly_label = input$health_board_input
+      } else{
+        
+        if(length(input$health_board_input) == 14) {
+          
+          hb_plotly_label <- "All Health Boards"
+          
+        } else {
+        hb_plotly_label <- str_c("Total of Multiple HBs:\n",
+                          str_c(input$health_board_input, collapse = ",\n"))
+      }
+      
+    }})
+    
+    output$attendance_plot <- renderPlotly({
       
       if(length(input$health_board_input) <= 5) {
 
         p <-  total_attendance() %>% 
           group_by(date_ym, hb_name) %>% 
           summarise(total_attendance = sum(total_attendance)) %>% 
-          ggplot(aes(x = date_ym, y = total_attendance, col = hb_name)) +
+          mutate(HB = paste(hb_name,"\nAttendance: ",
+                               comma(total_attendance), "\nDate: ",
+                               format(date_ym, "%h-%Y"))) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_name, 
+                     label = HB)) +
           geom_line()
         
       } else {
@@ -209,29 +234,36 @@ shinyServer(function(input, output) {
         p <- total_attendance() %>%  
           mutate(hb_label = hb_label()) %>% 
           group_by(date_ym) %>% 
-          summarise(total_attendance = sum(total_attendance)) %>% 
-          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label())) +
+          summarise(total_attendance = sum(total_attendance)) %>%
+          mutate(HB = paste(hb_label(),"\nAttendance: ",
+                               comma(total_attendance), "\nDate: ",
+                               format(date_ym, "%h-%Y"))) %>% 
+          ggplot(aes(x = date_ym, y = total_attendance, colour = hb_label(),
+                     label = HB)) +
           geom_line()
         
       }
       
-      p  + theme_classic() +
-        scale_y_continuous(labels = comma, 
+      p <- p + theme_classic() +
+        scale_y_continuous(labels = comma,
                            expand = c(0, 0),
                            limits = c(0, NA)) +
         scale_x_date(date_labels = "%Y",
                      date_breaks = "1 year") +
         labs(title = "Total hospital attendances: July 2007 to June 2022",
-             subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected", 
+             subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected",
              col = "Health Board",
              y = "Total Hospital Admissions") +
         theme(axis.title.x = element_blank(),
               axis.text.x = element_text(angle = 45, hjust = 1),
-              legend.text.align = 0)
+              legend.text.align = 0,
+              panel.background = element_rect(colour = "black"))
       
-      
-      
-      
+      ggplotly(p,
+               tooltip = c("label")) %>% 
+        config(displayModeBar = F) %>% 
+        layout(hovermode = "x") 
+
     })
     
     simd <- reactive({
