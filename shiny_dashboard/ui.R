@@ -6,13 +6,20 @@ library(shinyWidgets)
 
 
 shinyUI(fluidPage(
-  titlePanel(
-    h2(strong("How has covid affected Scotland's Hospitals?"),
-       align = "left")),
   
+  
+  # theme = bs_theme(bootswatch = "morph"),
+  
+
+  titlePanel(
+
+        h2(strong("How has covid affected Scotland's Hospitals?"),
+       align = "left")),
+
   fluidRow(
-    
+
     column(width = 2, offset = 0,
+
            h4(strong("Inputs")),
            tags$form(class = "well",
                      pickerInput("health_board_input",
@@ -26,8 +33,7 @@ shinyUI(fluidPage(
            ),
            
            column(width = 10,
-                  h3("Trends in hospital admissions"),
-                  style = "border: 4px double blue;",
+                  h3(strong("Trends in hospital admissions")),
                   column(width = 8,
                          plotlyOutput("attendance_plot")
                   ),
@@ -57,7 +63,8 @@ shinyUI(fluidPage(
   fluidRow(
     
     column(width = 6, offset = 0,
-           h3("Change in Patient Demographics: Pre-Covid vs During Covid"),
+
+           h3(strong("Change in Patient Demographics: Pre-Covid vs During Covid")),
            
            column(width = 6,
                   plotOutput("demo_plot")
@@ -68,7 +75,7 @@ shinyUI(fluidPage(
                   plotOutput("simd_total_stays")
            )),
     column(width = 6, offset = 0,
-           h3("Hospital Performance Metrics (KPIs)"),
+           h3(strong("Hospital Performance Metrics (KPIs)")),
            style = "border: 4px double blue;",
            
            column(width = 4,
@@ -107,10 +114,12 @@ shinyUI(fluidPage(
                      
                    )
          )
+
   )
   
 )
 )
+
 
 
 
