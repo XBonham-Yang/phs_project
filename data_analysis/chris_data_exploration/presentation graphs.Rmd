@@ -78,6 +78,15 @@ combined_data %>%
 
 pallette <- rgb(7, 143, 204, maxColorValue = 255)
 
+pal <- c(
+         rgb(7, 143, 204, maxColorValue = 255),#good blue
+         rgb(147, 190, 32, maxColorValue = 255),#good green
+         rgb(146, 65, 143, maxColorValue = 255), # good purple 
+         rgb(111, 177, 210,maxColorValue = 255),#light blue
+         rgb(35, 112, 60,maxColorValue = 255), #dark green 
+         rgb(6, 57, 83, maxColorValue = 255) #blue dark 
+)
+
 demo_clean %>% 
   group_by(quarter) %>% 
   summarise(total_age_sex = sum(episodes)) %>% 
@@ -113,10 +122,14 @@ demo_clean %>%
   mutate(q_percent = q_episodes / yearly_eps) %>% 
   group_by(q) %>% 
   summarise(avg_q_percent = mean(q_percent)) %>% 
-  ggplot(aes(x = q, y = avg_q_percent, label = percent(avg_q_percent, accuracy = 0.1), fill = q)) +
+  ggplot(aes(x = q, y = avg_q_percent,
+             label = percent(avg_q_percent, accuracy = 0.1),
+             fill = q),
+             col = "black") +
   geom_col() +
   scale_fill_manual(values = pal) +
-  geom_label(col = "black", fill = "white", vjust = 5) +
+  geom_label(position = position_stack(vjust = 0.5),
+              col = "black", fill = "white") +
   theme_classic() +
   scale_y_continuous(labels = percent, 
                      expand = c(0, 0),
@@ -132,6 +145,47 @@ demo_clean %>%
 
 
 ```
+
+```{r}
+
+total_ep_year <- demo_clean %>% 
+  group_by(year) %>% 
+  summarise(yearly_eps = sum(episodes))
+
+demo_clean %>% 
+  filter(year > 2016 & year <= 2019) %>% 
+  group_by(year, q) %>% 
+  summarise(q_episodes = sum(episodes)) %>%
+  left_join(total_ep_year, "year") %>%
+  mutate(q_percent = q_episodes / yearly_eps) %>%
+  group_by(q) %>%
+  summarise(avg_q_episodes = mean(q_episodes),
+            avg_q_percent = mean(q_percent)) %>% 
+  ggplot(aes(x = q, y = avg_q_episodes,
+             label = paste0(comma(avg_q_episodes),"\n(", percent(avg_q_percent, accuracy = 0.1),")"),
+             fill = q),
+             col = "black") +
+  geom_col() +
+  scale_fill_manual(values = pal) +
+  geom_label(position = position_stack(vjust = 0.5),
+              col = "black", fill = "white") +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  labs(title = "Average number (& annual proportions) of hospital attendances",
+       subtitle = "Split by quarter - Pre-Covid: 2017 Q1 to 2019 Q4", 
+       col = "Health Board",
+       y = "Average Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 0, hjust = 1, size = 12,
+                                   face = "bold"),
+        legend.position = "none")
+  
+
+
+```
+
 
 ```{r}
 
@@ -173,6 +227,222 @@ waiting_times %>%
   labs(y = "A&E attendances",
        title = "Seasonal Variation of A&E attendances",
        subtitle = )
+
+```
+
+```{r}
+
+total_sex <- demo_clean %>% 
+  group_by(is_covid_year) %>% 
+  summarise(total_episodes = sum(episodes))
+
+demo_clean %>% 
+  group_by(is_covid_year, sex) %>% 
+  summarise(sum_episodes = sum(episodes)) %>% 
+  left_join(total_sex, "is_covid_year") %>% 
+  mutate(proportion = sum_episodes / total_episodes,
+         is_covid_year = factor(is_covid_year, c("Pre_Covid", "Covid"))) %>% 
+  ggplot(aes(x = is_covid_year, y = proportion, fill = sex,
+             label = percent(proportion, accuracy = 0.1))) +
+  geom_col() +
+  geom_label(position = position_stack(vjust = 0.5), fill = "white") +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.x = element_text(face = "bold", size = 12)) +
+  labs(title = "Proportion of attendances by sex",
+       subtitle = "Pre-covid vs During Covid",
+       fill = "Sex")
+
+```
+
+```{r}
+
+total_age <- demo_clean %>% 
+  group_by(is_covid_year, quarter, q) %>% 
+  filter(is_covid_year != "Covid") %>% 
+  summarise(total_episodes = sum(episodes)) %>% 
+  ungroup() %>% 
+  select(- is_covid_year)
+
+demo_clean %>% 
+  mutate(sex = factor(sex, c("Male", "Female"))) %>% 
+  filter(is_covid_year != "Covid") %>% 
+  group_by(quarter, q, sex) %>% 
+  summarise(sum_episodes = sum(episodes)) %>% 
+  left_join(total_age) %>% 
+  mutate(proportion = sum_episodes / total_episodes) %>% 
+  group_by(q, sex) %>% 
+  summarise(q_avg_sex = mean(proportion)) %>% 
+  ggplot(aes(x = q, y = q_avg_sex, fill = sex,
+             label = percent(q_avg_sex, accuracy = 0.1))) +
+  geom_col() +
+  geom_label(position = position_stack(vjust = 0.5), fill = "white") +
+  scale_fill_manual(values = pal) +
+  theme_classic() +
+  theme(axis.line = element_blank(),
+        axis.text.y = element_blank(),
+        axis.title = element_blank(),
+        axis.ticks = element_blank(),
+        axis.text.x = element_text(face = "bold", size = 12)) +
+  labs(title = "Gender split by quarter",
+       subtitle = "2016 Q4 to 2019 Q4",
+       fill = "Sex")
+
+```
+
+```{r}
+
+total_age_year <- demo_clean %>%
+  group_by(year, q) %>% 
+  summarise(quarter_total = sum(episodes)) %>%
+  ungroup()
+
+demo_clean %>% 
+  filter(year > 2016 & year <= 2019) %>% 
+  group_by(year, q, age) %>% 
+  summarise(q_episodes = sum(episodes)) %>%  
+  left_join(total_age_year) %>% 
+  mutate(prop_age = q_episodes / quarter_total) %>% 
+  group_by(q, age) %>% 
+  summarise(avg_age_prop = mean(prop_age)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = q, y = avg_age_prop,
+             label = percent(avg_age_prop, accuracy = 0.1),
+             colour = age,
+             group = age),
+             col = "black") +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ age, scales = "free_y") +
+  # scale_fill_manual(values = pal) +
+  # geom_label(position = position_stack(vjust = 0.5),
+  #             col = "black", fill = "white") +
+  theme_classic() +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Average number of hospital attendances split by quarter",
+       subtitle = "Pre-Covid: 2017 Q1 to 2019 Q4", 
+       col = "Health Board",
+       y = "Average number of Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+```
+
+```{r}
+
+total_age_year <- demo_clean %>%
+  group_by(year, q) %>% 
+  summarise(quarter_total = sum(episodes)) %>%
+  ungroup()
+
+demo_clean %>% 
+  filter(year > 2016 & year <= 2019) %>% 
+  group_by(year, q, age) %>% 
+  summarise(q_episodes = sum(episodes)) %>%  
+  # left_join(total_age_year) %>% 
+  # mutate(prop_age = q_episodes / quarter_total) %>% 
+  group_by(q, age) %>% 
+  summarise(avg_age_nums = mean(q_episodes)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = q, y = avg_age_nums,
+             label = comma(avg_age_nums),
+             colour = age,
+             group = age),
+             col = "black") +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ age) + #, scales = "free_y") +
+  # scale_fill_manual(values = pal) +
+  # geom_label(position = position_stack(vjust = 0.5),
+  #             col = "black", fill = "white") +
+  theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0)) +
+  labs(title = "Average number of hospital attendances split by quarter",
+       subtitle = "Pre-Covid: 2017 Q1 to 2019 Q4", 
+       col = "Health Board",
+       y = "Average number of Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+```
+
+```{r}
+
+hb_avg_admissions <- demo_clean %>% 
+  filter(year <= 2019) %>% 
+  group_by(year, hb_name) %>% 
+  summarise(avg_yr_admissions = sum(episodes)) %>% 
+  group_by(hb_name) %>% 
+  summarise(avg_admissions = mean(avg_yr_admissions))
+
+
+hb_simple <- st_read(dsn = here("clean_data/"),
+        layer = "health_board_simple") %>% 
+  left_join(hb_avg_admissions, "hb_name") %>%
+  ggplot() +
+  geom_sf(aes(fill = avg_admissions)) +
+  scale_fill_distiller(palette = "Blues", direction = 1, labels = comma) +
+  theme_void() +
+  labs(fill = "Annual hospital admissions")
+
+
+hb_simple
+```
+
+```{r}
+
+
+hb_avg_admissions <- demo_clean %>% 
+  # filter(year <= 2019) %>% 
+  group_by(year, hb_name) %>% 
+  summarise(avg_yr_admissions = sum(episodes)) %>% 
+  group_by(hb_name) %>% 
+  summarise(avg_admissions = mean(avg_yr_admissions))
+
+
+hb_simple <- st_read(dsn = here("clean_data/"),
+        layer = "health_board_simple") %>% 
+  left_join(hb_avg_admissions, "hb_name") %>%
+  ggplot() +
+  geom_sf(aes(fill = avg_admissions)) +
+  scale_fill_distiller(palette = "Blues", direction = 1, labels = comma) +
+  theme_void() +
+  labs(fill = "Annual hospital admissions")
+
+
+hb_simple
+```
+
+```{r}
+
+total_age_year <- demo_clean %>%
+  group_by(year, q) %>% 
+  summarise(quarter_total = sum(episodes)) %>%
+  ungroup()
+
+demo_clean %>% 
+  group_by(quarter, age) %>% 
+  summarise(q_episodes = sum(episodes)) %>% 
+  ggplot(aes(x = quarter, y = q_episodes, group = age,
+             colour = age)) +
+  geom_line() +
+    theme_classic() +
+  scale_y_continuous(labels = comma, 
+                     expand = c(0, 0)) +
+  labs(title = "Hospital attendances split by age group",
+       col = "Age Group",
+       y = "Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1))
+
+
+
 
 ```
 

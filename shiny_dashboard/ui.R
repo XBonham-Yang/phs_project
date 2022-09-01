@@ -31,8 +31,10 @@ shinyUI(fluidPage(
            )
     ),
     
+    
     column(width = 10,
            h4(strong("Trends in hospital admissions")),
+           
            tags$form(class = "well",
                      fluidRow(
                        column(width = 7,

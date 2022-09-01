@@ -263,7 +263,7 @@ shinyServer(function(input, output) {
           scale_y_continuous(labels = comma,
                              expand = c(0, 0),
                              limits = c(0, NA)) +
-          labs(title = "Total hospital attendances: 2016 Q4 to 2021 Q4",
+          labs(title = "Total hospital admissions: 2016 Q4 to 2021 Q4",
                subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected",
                col = "Health Board",
                y = "Hospital Attendances") +
