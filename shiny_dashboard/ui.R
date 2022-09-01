@@ -64,7 +64,7 @@ shinyUI(fluidPage(
 
   ,
   column(width = 6, offset = 0,
-         h4(strong("Hospital Performance Metrics (KPIs)")),
+         h4(strong("Hospital Performance Metrics (KPIs)\n")),
          tags$form(class = "well",
                    fluidRow(
                      column(width = 8,
@@ -77,7 +77,9 @@ shinyUI(fluidPage(
                    )
          )
   )
-  )
+  ),
+  tags$i("Open data from Public Health Scotland are used for this dashboard."),
+  tags$a("The Public Health Scotland Website", href = "https://publichealthscotland.scot/")
   
 )
 )
