@@ -157,7 +157,7 @@ str_c("Multiple HBs:\n", str_c("Borders", "Lothian", "Dumfries", sep = ",\n"))
 
 p  +
   theme_classic() +
-  scale_y_continuous(labels = comma, 
+  scale_y_continuous(labels = scales::comma, 
                      expand = c(0, 0),
                      limits = c(0, NA)) +
   scale_x_date(date_labels = "%Y",
@@ -333,72 +333,72 @@ waiting_times %>%
 ```{r}
 # in terms of numbers
 waiting_times %>% 
-  group_by(date_ym, health_board) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(wait_gt_8hrs = sum(wait_gt_8hrs)) %>% 
-  ggplot(aes(x = date_ym, y = wait_gt_8hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = wait_gt_8hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Number of waits > 8 hours for each healthboard")
 
 # in terms of proportion
 waiting_times_prop %>% 
-  group_by(date_ym, health_board) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
               sum(total_attendance)) %>% 
-  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Proportion of waits > 8 hours for each healthboard")
 
 
 # find top 5 healthboards (in terms of attendances)
 top_5_attendances_by_hb <- waiting_times_prop %>% 
-  group_by(health_board) %>% 
+  group_by(hb_name) %>% 
   summarise(total_att = sum(total_attendance)) %>% 
   slice_max(total_att, n = 5)
 
 # find bottom 5 healthboards (in terms of attendances)
 bottom_5_attendances_by_hb <- waiting_times_prop %>% 
-  group_by(health_board) %>% 
+  group_by(hb_name) %>% 
   summarise(total_att = sum(total_attendance)) %>% 
   slice_min(total_att, n = 5)
 
 # wait times across the top 5 healthboards > 8 hours
 waiting_times_prop %>% 
-  filter(health_board %in% top_5_attendances_by_hb$health_board) %>% 
-  group_by(date_ym, health_board) %>% 
+  filter(hb_name %in% top_5_attendances_by_hb$hb_name) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
               sum(total_attendance)) %>% 
-  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Proportion of waits > 8 hours for the top 5 most attended healthboards")
 
 # wait times across the bottom 5 healthboards > 8 hours
 waiting_times_prop %>% 
-  filter(health_board %in% bottom_5_attendances_by_hb$health_board) %>% 
-  group_by(date_ym, health_board) %>% 
+  filter(hb_name %in% bottom_5_attendances_by_hb$hb_name) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/
               sum(total_attendance)) %>% 
-  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = prop_gt_8hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Proportion of waits > 8 hours for the bottom 5 most attended healthboards")
 
 
 # wait times across the top 5 healthboards > 12 hours
 waiting_times_prop %>% 
-  filter(health_board %in% top_5_attendances_by_hb$health_board) %>% 
-  group_by(date_ym, health_board) %>% 
+  filter(hb_name %in% top_5_attendances_by_hb$hb_name) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/
               sum(total_attendance)) %>% 
-  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Proportion of waits > 12 hours for the bottom 5 most attended healthboards")
 
 # wait times across the bottom 5 healthboards > 12 hours
 waiting_times_prop %>% 
-  filter(health_board %in% bottom_5_attendances_by_hb$health_board) %>% 
-  group_by(date_ym, health_board) %>% 
+  filter(hb_name %in% bottom_5_attendances_by_hb$hb_name) %>% 
+  group_by(date_ym, hb_name) %>% 
   summarise(prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/
               sum(total_attendance)) %>% 
-  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = health_board)) +
+  ggplot(aes(x = date_ym, y = prop_gt_12hrs, col = hb_name)) +
   geom_line() +
   labs(title = "Proportion of waits > 12 hours for the bottom 5 most attended healthboards")
 
@@ -522,13 +522,13 @@ The number of A&E attendances decrease during the winter months however the prop
 waiting_times_prop %>% 
   # filter(year <= 2019) %>% 
   mutate(month = factor(month, levels = c("July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June"))) %>% 
-  group_by(month, health_board) %>% 
+  group_by(month, hb_name) %>% 
   summarise(total_attends = mean(total_attendance),
             prop_lt_4hrs = sum(total_attendance * prop_lt_4hrs)/ sum(total_attendance),
             prop_gt_4hrs = sum(total_attendance * prop_gt_4hrs)/ sum(total_attendance),
             prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/ sum(total_attendance),
             prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/ sum(total_attendance)) %>% 
-  ggplot(aes(x = month, y = prop_gt_12hrs, group = health_board, colour = health_board)) +
+  ggplot(aes(x = month, y = prop_gt_12hrs, group = hb_name, colour = hb_name)) +
   geom_line() +
   labs(title = "Seasonality of proportion of visits with a wait time > 12 hours") +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))

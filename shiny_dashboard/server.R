@@ -80,7 +80,7 @@ shinyServer(function(input, output) {
             axis.title.y = element_blank(),
             title = element_text(size = 14, face = "bold")) +
       labs(y = "Change (%)",
-           title = "Changes in Age and Sex proportions")
+           title = "Changes in Age Group proportions by Sex")
   })
   
   output$wait_times_plot <- renderPlot({
@@ -199,82 +199,87 @@ shinyServer(function(input, output) {
     })
     
     hb_label <- eventReactive(input$update, {
-      
+
       if(length(input$health_board_input) == 14) {
         hb_label <- "All Health Boards"
       } else {
         hb_label <- str_c("Total of Multiple HBs:\n",
                           str_c(input$health_board_input, collapse = ",\n"))
       }
-      
+
     })
-    
+
     hb_plotly_label <- eventReactive(input$update, {
-      
+
       if(length(input$health_board_input) <= 5) {
+
         hb_plotly_label = input$health_board_input
-      } else{
-        
+
+      } else {
+
         if(length(input$health_board_input) == 14) {
-          
+
           hb_plotly_label <- "All Health Boards"
-          
+
         } else {
+
         hb_plotly_label <- str_c("Total of Multiple HBs:\n",
                           str_c(input$health_board_input, collapse = ",\n"))
       }
-      
+
     }})
     
     output$attendance_plot <- renderPlotly({
-      
-      if(length(input$health_board_input) <= 5) {
-
-        p <-  total_attendance() %>% 
-          group_by(quarter, hb_name) %>% 
-          summarise(total_attendance = sum(episodes)) %>% 
-          mutate(HB = paste(hb_name,
-                            "\nAttendance: ", comma(total_attendance),
-                            "\nDate: ", quarter)) %>% 
-          ggplot(aes(x = quarter, y = total_attendance, colour = hb_name, 
-                     label = HB)) +
-          geom_line()
         
-      } else {
-
-        p <- total_attendance() %>%  
-          mutate(hb_label = hb_label()) %>% 
-          group_by(quarter) %>% 
-          summarise(total_attendance = sum(episodes)) %>%
-          mutate(HB = paste(hb_label(),
-                            "\nAttendance: ", comma(total_attendance),
-                            "\nDate: ", quarter)) %>% 
-          ggplot(aes(x = quarter, y = total_attendance, colour = hb_label(),
-                     label = HB)) +
-          geom_line()
+        if(length(input$health_board_input) <= 5) {
           
-      }
-      
-      p <- p + geom_point() +
-        theme_classic() +
-        scale_y_continuous(labels = comma,
-                           expand = c(0, 0),
-                           limits = c(0, NA)) +
-        labs(title = "Total hospital attendances: 2016 Q4 to 2021 Q4",
-             subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected",
-             col = "Health Board",
-             y = "Hospital Attendances") +
-        theme(axis.title.x = element_blank(),
-              axis.text.x = element_text(angle = 45, hjust = 1),
-              legend.text.align = 0,
-              panel.background = element_rect(colour = "black"))
-      
-      ggplotly(p,
-               tooltip = c("label")) %>%
-        config(displayModeBar = F) %>%
-        layout(hovermode = "x")
+          p <-  total_attendance() %>% 
+            group_by(quarter, hb_name) %>% 
+            summarise(total_attendance = sum(episodes)) %>% 
+            mutate(HB = paste(hb_name,
+                              "\nAttendance: ", comma(total_attendance),
+                              "\nDate: ", quarter)) %>% 
+            ggplot(aes(x = quarter, y = total_attendance, colour = hb_name,
+                       label = HB, group = 1))
 
-    })
+        } else {
+
+          p <- total_attendance() %>%
+            mutate(hb_label = hb_label()) %>%
+            group_by(quarter) %>%
+            summarise(total_attendance = sum(episodes)) %>%
+            mutate(HB = paste(hb_label(),
+                              "\nAttendance: ", comma(total_attendance),
+                              "\nDate: ", quarter)) %>%
+            ggplot(aes(x = quarter, y = total_attendance, label = HB,
+                       colour = hb_label(), group = 1)) 
+
+        }
+        
+        p <- p +
+          geom_line() +
+          geom_point() +
+          theme_classic() +
+          scale_y_continuous(labels = comma,
+                             expand = c(0, 0),
+                             limits = c(0, NA)) +
+          labs(title = "Total hospital attendances: 2016 Q4 to 2021 Q4",
+               subtitle = "Up to 5 health boards shown at a time, >5 selections shows total of selected",
+               col = "Health Board",
+               y = "Hospital Attendances") +
+          theme(axis.title.x = element_blank(),
+                axis.text.x = element_text(angle = 45, hjust = 1),
+                legend.text.align = 0,
+                panel.background = element_rect(colour = "black"),
+                title = element_text(face = "bold")) +
+          scale_colour_manual(values = pal)
+        
+        ggplotly(p,
+                 tooltip = c("label")) %>%
+          config(displayModeBar = F) %>%
+          layout(hovermode = "x")
+        
+      })
     
     simd <- eventReactive(input$update, {
       inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_cleaned %>% 
