@@ -17,26 +17,35 @@ library(scales)
 
 ```{r}
 
-demo_clean <- read_csv("clean_data/demo_clean.csv")
+hb <- read_csv(here("clean_data/hb_list_simple.csv"))
+
+demo_clean <- read_csv(here("clean_data/demo_clean.csv")) %>% 
+  mutate(q = str_sub(quarter, -2, -1),
+         q = factor(q, levels = c("Q1", "Q2", "Q3", "Q4"), ordered = TRUE),
+         year = yq(quarter),
+         year = year(year))
 
 
 beds <- read_csv(here("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
   clean_names() %>% 
   select(-ends_with("qf")) %>% 
   left_join(hb, "hb") %>% 
-  left_join(hospitals, "location") %>% 
-  select(quarter, hb, hb_name, location, location_name, specialty_name:percentage_occupancy) %>% 
-  mutate()
+  # left_join(hospitals, "location") %>% 
+  select(quarter, hb, hb_name, specialty_name:percentage_occupancy)
 
-simd_raw <- read_csv("clean_data/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd_non_covid_rr_cleaned.csv")
+simd <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_simd.csv")) %>% 
+  clean_names() %>% 
+  select(-ends_with("qf")) %>% 
+  left_join(hb, "hb") %>% 
+  select(quarter, hb, hb_name, simd, episodes)
 
 
 specialties <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_board_of_treatment_and_specialty.csv")) %>% 
   clean_names() %>% 
   inner_join(hb, "hb") %>% 
-  inner_join(hospitals, "location") %>% 
+  # inner_join(hospitals, "location") %>% 
   select(-ends_with("qf"), -hb, - specialty) %>% 
-  select(quarter, hb_name, location, location_name, everything()) %>% 
+  select(quarter, hb_name, everything()) %>% 
   mutate(year = as.numeric(str_sub(quarter,1, 4)), .before = quarter) %>% 
   mutate(is_covid_year = case_when(
     year >= 2020 ~ TRUE,
@@ -47,9 +56,12 @@ specialties <- read_csv(here("raw_data/non_covid/inpatient_and_daycase_by_nhs_bo
 
 ```{r}
 
+total_as <- demo_clean %>% 
+  group_by(quarter) %>% 
+  summarise(total_age_sex = sum(episodes)) 
 
-
-total_simd <- simd_raw %>% 
+total_simd <- simd %>%
+  filter(!is.na(hb_name)) %>% 
   group_by(quarter) %>% 
   summarise(total_simd = sum(episodes))
 
@@ -64,16 +76,19 @@ combined_data %>%
 
 ```{r}
 
+pallette <- rgb(7, 143, 204, maxColorValue = 255)
+
 demo_clean %>% 
-  group_by(quarter, hb_name) %>% 
+  group_by(quarter) %>% 
   summarise(total_age_sex = sum(episodes)) %>% 
-  ggplot(aes(x = quarter, y = total_age_sex, colour = hb_name, group = hb_name)) +
-  geom_line() +
-  geom_point() +
+  ggplot(aes(x = quarter, y = total_age_sex, group = 1)) +
+  geom_line(colour = "#078FCC") +
+  geom_point(colour = "#078FCC") +
   theme_classic() +
   scale_y_continuous(labels = comma, 
                      expand = c(0, 0),
                      limits = c(0, NA)) +
+  scale_colour_manual(values = pal) +
   labs(title = "Nationwide Hospital Attendances",
        subtitle = "July 2007 to June 2022", 
        col = "Health Board",
@@ -81,6 +96,83 @@ demo_clean %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1),
         legend.position = "none")
+
+```
+
+```{r}
+
+total_ep_year <- demo_clean %>% 
+  group_by(year) %>% 
+  summarise(yearly_eps = sum(episodes))
+
+demo_clean %>% 
+  filter(year > 2016 & year <= 2019) %>% 
+  group_by(year, q) %>% 
+  summarise(q_episodes = sum(episodes)) %>%
+  left_join(total_ep_year, "year") %>%
+  mutate(q_percent = q_episodes / yearly_eps) %>% 
+  group_by(q) %>% 
+  summarise(avg_q_percent = mean(q_percent)) %>% 
+  ggplot(aes(x = q, y = avg_q_percent, label = percent(avg_q_percent, accuracy = 0.1), fill = q)) +
+  geom_col() +
+  scale_fill_manual(values = pal) +
+  geom_label(col = "black", fill = "white", vjust = 5) +
+  theme_classic() +
+  scale_y_continuous(labels = percent, 
+                     expand = c(0, 0),
+                     limits = c(0, NA)) +
+  labs(title = "Average proportion of hospital attendances split by quarter",
+       subtitle = "Pre-Covid: 2017 Q1 to 2019 Q4", 
+       col = "Health Board",
+       y = "Proportion of Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+  
+
+
+```
+
+```{r}
+
+waiting_times <- read_csv(here("raw_data/non_covid/monthly_ae_waitingtimes_202206.csv")) %>% 
+  clean_names() %>% 
+  mutate(date_ym = ym(month), .before = month,
+         month = month(date_ym, label = TRUE, abbr = FALSE),
+         year = year(date_ym)) %>% 
+  left_join(hb, c("hbt" = "hb")) %>% 
+  left_join(hospitals, c("treatment_location" = "location")) %>% 
+  rename(total_attendance = number_of_attendances_aggregate,
+         wait_lt_4hrs = number_meeting_target_aggregate,
+         wait_gt_8hrs = attendance_greater8hrs,
+         wait_gt_12hrs = attendance_greater12hrs,
+         hospital_id = treatment_location, 
+         hospital_name = location_name) %>%
+  select(date_ym, year, month, hb_name, hospital_id, hospital_name, department_type,
+         total_attendance, wait_lt_4hrs, wait_gt_8hrs, wait_gt_12hrs) %>% 
+  mutate(wait_gt_4hrs = total_attendance - wait_lt_4hrs, .after = wait_lt_4hrs) %>%
+  mutate(across(total_attendance:wait_gt_12hrs, .fns = ~coalesce(., 0))) %>% 
+  mutate(is_covid_year = case_when(
+    year <= 2019 ~ FALSE,
+    year >= 2020 ~ TRUE
+  ))
+
+
+# attendances - all data covid seasonal analysis
+
+
+waiting_times %>% 
+  # filter(year <= 2019) %>%  
+  group_by(year, month, department_type, is_covid_year) %>% 
+  summarise(total_attendance = sum(total_attendance)) %>% 
+  group_by(month, department_type, is_covid_year) %>% 
+  summarise(monthly_avg = mean(total_attendance)) %>% 
+  ggplot(aes(x = month, y = monthly_avg, group = department_type, col = is_covid_year)) +
+  geom_line() +
+  facet_wrap(department_type ~ is_covid_year, scales = "free_y") +
+  labs(y = "A&E attendances",
+       title = "Seasonal Variation of A&E attendances",
+       subtitle = )
 
 ```
 

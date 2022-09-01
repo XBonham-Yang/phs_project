@@ -162,7 +162,7 @@ p  +
                      limits = c(0, NA)) +
   scale_x_date(date_labels = "%Y",
                date_breaks = "1 year") +
-  labs(title = "Total hospital attendances",
+  labs(title = "Total A&E attendances",
        subtitle = "July 2007 to June 2022", 
        col = "Health Board",
        y = "Total attendances") +
