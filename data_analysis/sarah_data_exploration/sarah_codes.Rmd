@@ -329,7 +329,8 @@ change_in_specialties %>%
   theme_classic() +
   scale_y_continuous(labels = percent_format())+
   theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+        axis.text.x = element_text(size = 8,angle = 45, hjust = 1),
+        legend.position = "none") +
   labs(y = "Percentage Increase (%)",
        title = "Increase in hospital admissions (by specialty) - pre-Covid vs Covid",
        subtitle = "More than 1,000 admissions")
@@ -344,12 +345,13 @@ change_in_specialties %>%
   geom_col(aes(fill = percentage_change >= 0 )) +
   theme_classic() +
   scale_y_continuous(labels = percent_format())+
-  scale_fill_manual(values = c("FALSE" = "seagreen", "TRUE"= "red"))+
+  scale_fill_manual(values = c("FALSE" = "seagreen", "TRUE"= "tomato"))+
   theme(axis.title.x = element_blank(),
-        axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
+        axis.text.x = element_text(size = 8,angle = 45, hjust = 1),
+        legend.position = "none") +
   labs(y = "Percentage Increase (%)",
        title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
-       subtitle = "+tive and -tive changes")
+       subtitle = "increase and decrease")
 
 write.csv(change_in_specialties, here("clean_data/specialties.csv"))
 
@@ -358,10 +360,11 @@ write.csv(change_in_specialties, here("clean_data/specialties.csv"))
 
 
 maybe useful 
+```{r}
+
 
 library(reshape2)
 before_after_covid <- specialties %>% 
-    filter(hb_name == "NHS Ayrshire and Arran") %>% #for input 
   group_by(specialty_name, is_covid_year,hb_name) %>% 
   summarise(total_episodes = sum(episodes)) %>% 
   pivot_wider(names_from = is_covid_year, values_from = total_episodes) %>% 
@@ -383,17 +386,17 @@ data_mod_before_after_covid <- melt(before_after_covid,
   
 
 ggplot(data_mod_before_after_covid) +
-geom_col(aes(x = reorder(specialty_name, percentage_change, decreasing = TRUE),
+geom_col(aes(x = reorder(specialty_name, value, decreasing = TRUE),
              y=value, color=variable, fill = variable), position = "dodge")+
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(size = 8,angle = 45, hjust = 1)) +
-  scale_fill_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "red"))+
-  scale_colour_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "red"))+
+  scale_fill_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "tomato"))+
+  scale_colour_manual(values = c("pre_covid_year_prop" = "grey", "covid_year_prop"= "tomato"))+
+  scale_y_continuous(labels = percent_format())+
   labs(y = "Percentage (%)",
-       title = "Top 5 changes in hospital admissions (by specialty) - pre-Covid vs Covid",
-       subtitle = "y is the percentage but x is ordered by percentage changes")
+       title = "Top 5 specialty in hospital admissions - pre-Covid vs Covid")
   
-  
+```  
 
 ```{r}
  total_admissions <- specialties %>% 
