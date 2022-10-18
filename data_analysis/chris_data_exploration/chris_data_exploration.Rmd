@@ -550,9 +550,9 @@ specialties_raw
 
 specialties <- specialties_raw %>% 
   inner_join(hb, "hb") %>% 
-  inner_join(hospitals, "location") %>% 
+  # inner_join(hospitals, "location") %>% 
   select(-ends_with("qf"), -hb, - specialty) %>% 
-  select(quarter, hb_name, location, location_name, everything()) %>% 
+  select(quarter, hb_name, everything()) %>% 
   mutate(year = as.numeric(str_sub(quarter,1, 4)), .before = quarter) %>% 
   mutate(is_covid_year = case_when(
     year >= 2020 ~ TRUE,
@@ -560,7 +560,16 @@ specialties <- specialties_raw %>%
   ))
   # mutate(quarter = str_sub(quarter, -2, -1))
 
-specialties
+specialties %>% 
+  mutate(q = str_sub(quarter, -2, -1)) %>% 
+  group_by(q, specialty_name) %>% 
+  summarise(avg_e = mean(episodes)) %>% 
+  ggplot(aes(q, y = avg_e, colour = specialty_name, group = specialty_name)) +
+  geom_line() +
+  facet_wrap(~specialty_name, scales = "free_y") +
+  theme(legend.position = "none")
+
+          
 
 ```
 

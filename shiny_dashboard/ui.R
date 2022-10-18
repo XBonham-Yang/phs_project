@@ -80,10 +80,11 @@ shinyUI(fluidPage(
          )
   )
   ),
-  tags$i("Open data from Public Health Scotland are used for this dashboard."),
+  tags$i("Open data from Public Health Scotland:"),
   tags$a("The Public Health Scotland Website", href = "https://publichealthscotland.scot/")
   
 )
+
 )
 
 

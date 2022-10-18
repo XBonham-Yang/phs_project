@@ -446,3 +446,41 @@ demo_clean %>%
 
 ```
 
+```{r}
+
+read_csv("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")
+
+specialties <- read_csv(here("clean_data/specialties.csv"))
+
+demo_clean %>% 
+  filter(year > 2016 & year <= 2019) %>%
+  group_by(year, q, age) %>% 
+  summarise(q_episodes = sum(episodes)) %>%  
+  left_join(total_age_year) %>% 
+  mutate(prop_age = q_episodes / quarter_total) %>% 
+  group_by(q, age) %>% 
+  summarise(avg_age_prop = mean(prop_age)) %>% 
+  ungroup() %>% 
+  ggplot(aes(x = q, y = avg_age_prop,
+             label = percent(avg_age_prop, accuracy = 0.1),
+             colour = age,
+             group = age),
+             col = "black") +
+  geom_line() +
+  geom_point() +
+  facet_wrap(~ age, scales = "free_y") +
+  # scale_fill_manual(values = pal) +
+  # geom_label(position = position_stack(vjust = 0.5),
+  #             col = "black", fill = "white") +
+  theme_classic() +
+  scale_y_continuous(labels = percent) +
+  labs(title = "Average number of hospital attendances split by quarter",
+       subtitle = "Pre-Covid: 2017 Q1 to 2019 Q4", 
+       col = "Health Board",
+       y = "Average number of Hospital Attendances") +
+  theme(axis.title.x = element_blank(),
+        axis.text.x = element_text(angle = 45, hjust = 1),
+        legend.position = "none")
+
+```
+
