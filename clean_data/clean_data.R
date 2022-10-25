@@ -5,6 +5,7 @@ library(tidyverse)
 library(janitor)
 library(here)
 
+##2.3 Data transformations including data cleaning
 
 # Health Board Data -------------------------------------------------------
 
@@ -32,8 +33,8 @@ demo_raw %>%
   mutate(sex = factor(sex, c("Male", "Female")),
          year = as.numeric(str_sub(quarter, 1, 4)),
          is_covid_year = case_when(
-           year <= 2019 ~ "Pre_Covid", #
-           year >= 2020 ~ "Covid"), # set covid to be Q2 of 2020
+           year <= 2019 ~ "Pre_Covid", # pre-covid period pre-2020
+           year >= 2020 ~ "Covid"), # set covid period to start 2020 Q1
          is_covid_year = factor(is_covid_year, c("Pre_Covid", "Covid"))) %>%
   filter(!is.na(is_covid_year)) %>% 
   write_csv("clean_data/demo_clean.csv")
@@ -46,6 +47,7 @@ health_board_map <- st_read(dsn = "raw_data/shape_files/",
  
 health_board_map %>% 
   clean_names() %>% 
+  # simplify number of points in map for improved app performance
   st_simplify(dTolerance = 1000) %>% 
   st_cast("MULTIPOLYGON") %>% 
   st_write(dsn = "clean_data/",
