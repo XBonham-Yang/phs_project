@@ -29,14 +29,15 @@ hb <- read_csv(here("raw_data/general/hb14_hb19.csv")) %>% janitor::clean_names(
 ------------   cleaning ---------
 I will clean 3 hb related data set and join them together at the end 
 
-
+2.3. Data transformations including data cleaning
+### Create date from the week_ending columns and select
+### the useful columns that we will be looking at. 
 ```{r}
 covid_age_sex_short <- covid_age_sex_hb %>% janitor::clean_names() %>% 
   select(c(week_ending, hb, age_group, sex, admission_type, number_admissions, average20182019, percent_variation)) %>% 
   mutate(week_ending = as.Date(ymd(week_ending)))
   
 ```
-
 
 ```{r}
 covid_simd_short <- covid_simd_hb %>% janitor::clean_names() %>% 
@@ -55,11 +56,8 @@ covid_specialty_short <- covid_specialty_hb %>% janitor::clean_names() %>%
 covid_hb <- covid_age_sex_short %>% full_join(covid_simd_short)%>% full_join(covid_specialty_short)
 ```
 
-
-emergency vs planned overall 
-very rough at the moment
-no filter or tidying, add filter later for things we want. 
-(eg age/sex it's mixed at the moment for the following two)
+2.5. Exploratory data analysis
+emergency vs planned admission type overall count 
 ```{r}
 covid_hb %>% 
   filter(admission_type %in% c("Emergency","Planned")) %>% 
@@ -111,16 +109,14 @@ geom_boxplot(aes(y=value, color=variable))+
 
 
  
-
- 
+2.6. Statistical analyses to identify patterns, trends and relationships in the dataset
+### Over time trend of percent variation for emergency admissions
 ```{r}
 covid_emergency %>% 
   ggplot(aes(week_ending, var)) +
     geom_col(fill = case_when(covid_emergency$var >= 0 ~"red",
                               TRUE ~ "seagreen"))+
-  labs(title = "draft-emergency percent variation comparing with 2018/2019 ",
-       subtitle = "strange",
-       fill = "fix it later")
+  labs(title = "emergency percent variation comparing with 2018/2019 ")
 ```
 
 -------planned -------

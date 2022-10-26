@@ -69,7 +69,7 @@ admissions %>%
   geom_line() +
   labs(title = "Total Admissions - split by sex") +
   theme_classic()
-
+#2.7. Interpreting the results of statistical analysis
 # number of males and females are pretty much the same across the entire covid timeline
 
 ```
