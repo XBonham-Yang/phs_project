@@ -75,7 +75,6 @@ combined_data %>%
 ```
 
 ```{r}
-
 pallette <- rgb(7, 143, 204, maxColorValue = 255)
 
 pal <- c(
@@ -86,7 +85,12 @@ pal <- c(
          rgb(35, 112, 60,maxColorValue = 255), #dark green 
          rgb(6, 57, 83, maxColorValue = 255) #blue dark 
 )
+```
 
+_2.5 Exploratory Data Analysis_
+# Time series trend of nationwide hospital attendances
+
+```{r}
 demo_clean %>% 
   group_by(quarter) %>% 
   summarise(total_age_sex = sum(episodes)) %>% 
@@ -231,10 +235,15 @@ waiting_times %>%
 ```
 
 ```{r}
-
 total_sex <- demo_clean %>% 
   group_by(is_covid_year) %>% 
   summarise(total_episodes = sum(episodes))
+```
+
+
+# Gender split in hospital attendances
+
+```{r, message=FALSE}
 
 demo_clean %>% 
   group_by(is_covid_year, sex) %>% 
@@ -259,13 +268,16 @@ demo_clean %>%
 ```
 
 ```{r}
-
 total_age <- demo_clean %>% 
   group_by(is_covid_year, quarter, q) %>% 
   filter(is_covid_year != "Covid") %>% 
   summarise(total_episodes = sum(episodes)) %>% 
   ungroup() %>% 
   select(- is_covid_year)
+```
+
+
+```{r}
 
 demo_clean %>% 
   mutate(sex = factor(sex, c("Male", "Female"))) %>% 
@@ -372,6 +384,8 @@ demo_clean %>%
 
 ```
 
+# Hospital Admission by Geographic Regions
+
 ```{r}
 
 hb_avg_admissions <- demo_clean %>% 
@@ -383,7 +397,9 @@ hb_avg_admissions <- demo_clean %>%
 
 
 hb_simple <- st_read(dsn = here("clean_data/"),
-        layer = "health_board_simple") %>% 
+        layer = "health_board_simple")
+
+hb_simple %>% 
   left_join(hb_avg_admissions, "hb_name") %>%
   ggplot() +
   geom_sf(aes(fill = avg_admissions)) +
@@ -391,8 +407,6 @@ hb_simple <- st_read(dsn = here("clean_data/"),
   theme_void() +
   labs(fill = "Annual hospital admissions")
 
-
-hb_simple
 ```
 
 ```{r}
@@ -420,12 +434,15 @@ hb_simple
 ```
 
 ```{r}
-
 total_age_year <- demo_clean %>%
   group_by(year, q) %>% 
   summarise(quarter_total = sum(episodes)) %>%
   ungroup()
+```
 
+
+
+```{r}
 demo_clean %>% 
   group_by(quarter, age) %>% 
   summarise(q_episodes = sum(episodes)) %>% 
@@ -441,14 +458,9 @@ demo_clean %>%
   theme(axis.title.x = element_blank(),
         axis.text.x = element_text(angle = 45, hjust = 1))
 
-
-
-
 ```
 
 ```{r}
-
-read_csv("raw_data/non_covid/beds_by_nhs_board_of_treatment_and_specialty.csv")
 
 specialties <- read_csv(here("clean_data/specialties.csv"))
 

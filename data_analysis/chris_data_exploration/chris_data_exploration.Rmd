@@ -450,8 +450,14 @@ waiting_times_prop %>%
 
 ```
 ## For the years 2007 to 2019, provide a summary of the effects of wait times at different times of the year.
-```{r}
 
+_2.6. Statistical analyses to identify patterns, trends and relationships in the data set_
+_2.7. Interpreting the results of statistical analysis_
+
+# Investigate the seasonality of A&E attendances and the proportion of waits greater than 12hours.
+
+```{r}
+# Calculate proportions for waiting times
 waiting_times_summary <- waiting_times_prop %>% 
   filter(year <= 2019) %>% 
   mutate(month = factor(month, levels = c("July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "June"))) %>% 
@@ -462,6 +468,7 @@ waiting_times_summary <- waiting_times_prop %>%
             prop_gt_8hrs = sum(total_attendance * prop_gt_8hrs)/ sum(total_attendance),
             prop_gt_12hrs = sum(total_attendance * prop_gt_12hrs)/ sum(total_attendance)) 
 
+# Average monthly attendances
 waiting_times_summary %>% 
   ggplot(aes(x = month, y = total_attends)) +
   geom_col() +
@@ -470,8 +477,34 @@ waiting_times_summary %>%
   labs(y = "Average monthly attendances",
        title = "Average A&E attendances",
        subtitle = "From July 2007 to December 2019 ") +
-  geom_smooth()
+  geom_smooth() +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0), labels = scales::comma,
+                     limits = c(0, 1600)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank())
+```
 
+```{r}
+# Seasonal trend of high wait times in A&E (>12 hours)
+waiting_times_summary %>% 
+  ggplot(aes(x = month, y = prop_gt_12hrs, group = 1)) +
+  geom_point() +
+  labs(title = "Seasonality of proportion of visits with a wait time > 12 hours",
+       subtitle = "Pre-covid: 2007 to 2019",
+       y = "Percentage of attendances > 12 hours") +
+  theme_classic() +
+  scale_y_continuous(expand = c(0,0), limits = c(0, 0.003),
+                     labels = scales::percent) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        axis.title.x = element_blank()) +
+  geom_smooth(se = FALSE)
+```
+
+The plot of the number of A&E attendances across the year show that the month with the highest average number of attendances is May (1,573) and the month with the lowest average number of attendances is February (1,312). The plot also shows a greater seasonal trend across A&E attendances with typically fewer number of attendances during the winter months (December to February) compared to the summer months (June to August). The seasonality of A&E attendances may be due to the higher risks of injury during warmer seasons when people are more likely to be out doing things, contrasted with the winter months where people are less likely to be spending times outdoors, for example. However, comparing the lower attendances during winter with the proportion of attendances waiting for greater than 12 hours highlights quite a serious issue with the complexity or intensity of cases during the winter periods. The seasonal variation with the proportion of attendances waiting longer than 12 hours to be discharged is very prominent and shows a peak in January at 0.26% of attendances waiting longer than 12 hours. This may not seem substantial, however, this is up from 0.04% in July, which represents an increase of 650% between the summer and winter months. These two trends show that despite lower attendances in winter, the proportion of waiting times increases, this is likely due to winter-related illnesses, like the flu, and the demographic of hospital attendances during the winter, i.e. higher proportion of elderly people, which has been investigated elsewhere in this analysis.
+
+
+```{r}
 waiting_times_summary %>% 
   ggplot(aes(x = month, y = prop_lt_4hrs, group = 1)) +
   geom_point() +
@@ -498,23 +531,10 @@ waiting_times_summary %>%
   geom_smooth()
 
 
-waiting_times_summary %>% 
-  ggplot(aes(x = month, y = prop_gt_12hrs, group = 1)) +
-  geom_point() +
-    scale_y_continuous(labels = scales::percent) +
-    labs(title = "Seasonality of proportion of visits with a wait time > 12 hours",
-         subtitle = "Pre-covid: 2007 to 2019",
-         y = "Percentage of attendances > 12 hours") +
-  theme_classic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1),
-        axis.title.x = element_blank()) +
-  geom_smooth(se = FALSE)
-
-
 
 
 ```
-The number of A&E attendances decrease during the winter months however the proportion of wait times greater than 4hours increases significantly between November and February highlighting that the complexity of cases in the winter mean that it takes hospitals longer to discharge patients. Perhaps combining this output with the bed occupation rates during the winter months could further supplement this relationship. 
+
 
 
 ```{r}
@@ -1208,8 +1228,14 @@ waiting_times %>%
   geom_rect(aes(ymax = 1, ymin = 0, xmax = 2, xmin = 1), fill = "grey80") +
   geom_rect() + 
   coord_polar(theta = "y",start=-pi/2) + xlim(c(0, 2)) + ylim(c(0,2)) +
-  geom_text(aes(x = 0, y = 0, label = scales::percent(proportion, accuracy = 0.1)), size = 6.5) +
-  geom_text(aes(x = 0.5, y = 1.5), label = c("Pre-Covid", "During Covid"), family="Poppins Light", size=4.2) + 
+  geom_text(aes(x = 0, 
+                y = 0,
+                label = scales::percent(proportion, accuracy = 0.1)),
+            size = 6.5) +
+  geom_text(aes(x = 0.5, y = 1.5),
+            label = c("Pre-Covid", "During Covid"),
+            family= "Poppins Light",
+            size= 4.2) + 
   facet_wrap(~is_covid_year, nrow = 1) +
   theme_void() +
   # scale_fill_manual(values = c("red"="#C9146C", "orange"="#DA9112", "green"="#129188")) +
