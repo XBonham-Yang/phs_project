@@ -121,6 +121,7 @@ covid_emergency %>%
 
 -------planned -------
 repeated as emergency 
+2.6. Statistical analyses to identify patterns, trends and relationships in the dataset
 ```{r}
 covid_planned <- covid_hb %>% 
   group_by(week_ending) %>% 
@@ -132,7 +133,6 @@ covid_planned <- covid_hb %>%
             mean_1819 = mean(average20182019),
             var = mean(percent_variation))
 ```
- 
 ```{r}
 data_mod_planned <- melt(covid_planned,
                   measure.vars=c('mean_this_week', 'mean_1819'))
@@ -140,8 +140,15 @@ data_mod_planned <- melt(covid_planned,
 
 ggplot(data_mod_planned) +
 geom_boxplot(aes(y=value, color=variable))+
-  labs(title = "plannedadmission all age, all sex, all specialty, mean of all hb",
-       subtitle = "why why why ")
+  labs(title = "planned admission, mean of all hb",
+       subtitle = "all age, all sex, all specialty ")
+```
+
+``` 
+2.7. Interpreting the results of statistical analysis
+From this box plot we can see that on average, planned admssoin ini 2020(i.e. Mean this week)
+is a lot lower than the mean of this figure in 2018 and 2019. This suggested that during covid
+people didn't have as many planned admissions to the hospitals as before covid.
 ```
 
 ```{r}
